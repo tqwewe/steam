@@ -14,22 +14,22 @@ import (
 	"net/http/cookiejar"
 )
 
+jar, err := cookiejar.New(nil)
+if err != nil {
+	return err
+}
+
+const Client := &http.Client{Jar: jar}
+
 func Login(username, password string) error {
 	var err 	error
 	var resp 	*http.Response
 	var doNotCache	string
 
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		return err
-	}
-
-	client := &http.Client{Jar: jar}
-
 	doNotCache = strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 
 	// Get RSA Key
-	resp, err = client.PostForm("https://steamcommunity.com/login/getrsakey/", map[string][]string{
+	resp, err = Client.PostForm("https://steamcommunity.com/login/getrsakey/", map[string][]string{
 		"donotcache": {doNotCache},
 		"username": {username},
 	})
@@ -91,7 +91,7 @@ func Login(username, password string) error {
 
 	doNotCache = strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 
-	resp, err = client.PostForm("https://steamcommunity.com/login/dologin/", map[string][]string{
+	resp, err = Client.PostForm("https://steamcommunity.com/login/dologin/", map[string][]string{
 		"donotcache":	{doNotCache},
 		"username": 	{username},
 		"password": 	{base64.StdEncoding.EncodeToString(encrypted[0:len(encrypted)])},
@@ -117,7 +117,7 @@ func Login(username, password string) error {
 		return errors.New(transfer["message"].(string))
 	}
 
-	resp, err = client.PostForm("https://store.steampowered.com/login/transfer", map[string][]string{
+	resp, err = Client.PostForm("https://store.steampowered.com/login/transfer", map[string][]string{
 		"steamid":		{transfer["transfer_parameters"].(map[string]interface{})["steamid"].(string)},
 		"token": 		{transfer["transfer_parameters"].(map[string]interface{})["token"].(string)},
 		"auth": 		{transfer["transfer_parameters"].(map[string]interface{})["auth"].(string)},
@@ -128,7 +128,7 @@ func Login(username, password string) error {
 		return err
 	}
 
-	resp, err = client.PostForm("https://help.steampowered.com/login/transfer", map[string][]string{
+	resp, err = Client.PostForm("https://help.steampowered.com/login/transfer", map[string][]string{
 		"steamid":		{transfer["transfer_parameters"].(map[string]interface{})["steamid"].(string)},
 		"token": 		{transfer["transfer_parameters"].(map[string]interface{})["token"].(string)},
 		"auth": 		{transfer["transfer_parameters"].(map[string]interface{})["auth"].(string)},
