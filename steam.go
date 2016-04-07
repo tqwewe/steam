@@ -36,6 +36,7 @@ func Login(username, password string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
