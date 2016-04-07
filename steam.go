@@ -14,10 +14,7 @@ import (
 	"net/http/cookiejar"
 )
 
-jar, err := cookiejar.New(nil)
-if err != nil {
-	return err
-}
+jar, _ := cookiejar.New(nil)
 
 const Client := &http.Client{Jar: jar}
 
