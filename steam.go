@@ -14,22 +14,26 @@ import (
 	"net/http/cookiejar"
 )
 
+var Client http.Client
+
+func init() {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	Client = &http.Client{Jar: jar}
+}
+
 func Login(username, password string) error {
 	var err 	error
 	var resp 	*http.Response
 	var doNotCache	string
 
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		return err
-	}
-
-	client := &http.Client{Jar: jar}
-
 	doNotCache = strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 
 	// Get RSA Key
-	resp, err = client.PostForm("https://steamcommunity.com/login/getrsakey/", map[string][]string{
+	resp, err = Client.PostForm("https://steamcommunity.com/login/getrsakey/", map[string][]string{
 		"donotcache": {doNotCache},
 		"username": {username},
 	})
@@ -70,14 +74,14 @@ func Login(username, password string) error {
 		return err
 	}
 
-	modulus, bol := new(big.Int).SetString(decoded["publickey_mod"].(string), 16 /* = base 16 */)
-	if !bol {
+	modulus, success := new(big.Int).SetString(decoded["publickey_mod"].(string), 16 /* = base 16 */)
+	if !success {
 		return errors.New("Unable to set modulus.")
 	}
 
 
-	exponent, bol := new(big.Int).SetString(decoded["publickey_exp"].(string), 16 /* = base 16 */)
-	if !bol {
+	exponent, success := new(big.Int).SetString(decoded["publickey_exp"].(string), 16 /* = base 16 */)
+	if !success {
 		return errors.New("Unable to set modulus.")
 	}
 
@@ -91,7 +95,7 @@ func Login(username, password string) error {
 
 	doNotCache = strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 
-	resp, err = client.PostForm("https://steamcommunity.com/login/dologin/", map[string][]string{
+	resp, err = Client.PostForm("https://steamcommunity.com/login/dologin/", map[string][]string{
 		"donotcache":	{doNotCache},
 		"username": 	{username},
 		"password": 	{base64.StdEncoding.EncodeToString(encrypted[0:len(encrypted)])},
@@ -117,7 +121,7 @@ func Login(username, password string) error {
 		return errors.New(transfer["message"].(string))
 	}
 
-	resp, err = client.PostForm("https://store.steampowered.com/login/transfer", map[string][]string{
+	resp, err = Client.PostForm("https://store.steampowered.com/login/transfer", map[string][]string{
 		"steamid":		{transfer["transfer_parameters"].(map[string]interface{})["steamid"].(string)},
 		"token": 		{transfer["transfer_parameters"].(map[string]interface{})["token"].(string)},
 		"auth": 		{transfer["transfer_parameters"].(map[string]interface{})["auth"].(string)},
@@ -128,7 +132,7 @@ func Login(username, password string) error {
 		return err
 	}
 
-	resp, err = client.PostForm("https://help.steampowered.com/login/transfer", map[string][]string{
+	resp, err = Client.PostForm("https://help.steampowered.com/login/transfer", map[string][]string{
 		"steamid":		{transfer["transfer_parameters"].(map[string]interface{})["steamid"].(string)},
 		"token": 		{transfer["transfer_parameters"].(map[string]interface{})["token"].(string)},
 		"auth": 		{transfer["transfer_parameters"].(map[string]interface{})["auth"].(string)},
@@ -141,3 +145,5 @@ func Login(username, password string) error {
 
 	return nil
 }
+
+func Message()
