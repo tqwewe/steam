@@ -12,21 +12,24 @@ import (
 	"math/big"
 	"encoding/base64"
 	"net/http/cookiejar"
+	"net/url"
+	"regexp"
 )
 
-var Client http.Client
+var Jar *cookiejar.Jar
+var Client *http.Client
+var err error
 
 func init() {
-	jar, err := cookiejar.New(nil)
+	Jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic(err)
 	}
 
-	Client = &http.Client{Jar: jar}
+	Client = &http.Client{Jar: Jar}
 }
 
 func Login(username, password string) error {
-	var err 	error
 	var resp 	*http.Response
 	var doNotCache	string
 
@@ -37,6 +40,7 @@ func Login(username, password string) error {
 		"donotcache": {doNotCache},
 		"username": {username},
 	})
+	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
@@ -146,4 +150,115 @@ func Login(username, password string) error {
 	return nil
 }
 
-func Message()
+func Message(recipient, message string) error {
+	umqid, err := getUmqid()
+	if err != nil {
+		return err
+	}
+
+	accessToken, err := getAccessToken()
+	if err != nil {
+		return err
+	}
+
+	resp, err := Client.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
+		"steamid_dst":		[]string {recipient},
+		"text":			[]string {message},
+		"umqid":		[]string {umqid},
+		"_":			[]string {strconv.FormatInt(makeTimestamp(), 10)},
+		"type":			[]string {"saytext"},
+		"jsonp":		[]string {"1"},
+		"access_token":		[]string {accessToken},
+	})
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var decoded map[string]interface{}
+
+	err = json.Unmarshal(content, &decoded)
+	if err != nil {
+		return "", err
+	}
+
+	if decoded["error"].(string) != "OK" {
+		return errors.New(decoded["error"].(string))
+	}
+
+	return nil
+}
+
+func GetCookie(cookie string) string {
+	url, _ := url.Parse("https://steamcommunity.com")
+
+	for _, v := range Client.Jar.Cookies(url) {
+		if v.Name == cookie {
+			return v.Value
+		}
+	}
+
+	return ""
+}
+
+func getAccessToken() (string, error) {
+	resp, err := Client.Get("https://steamcommunity.com/chat")
+	defer resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	token := regexp.MustCompile(`CWebAPI\s*\(\s*(?:[^,]+,){2}\s*"([0-9a-f]{32})"\s*\)`).FindSubmatch(content)
+	if token == nil {
+		return "", errors.New("No token available.")
+	}
+
+	return string(token[1]), nil
+}
+
+func getUmqid() (string, error) {
+	accessToken, err := getAccessToken()
+
+	resp, err := Client.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001", url.Values{
+		"jsonp":	[]string {"1"},
+		"ui_mode":	[]string {"web"},
+		"access_token":	[]string {accessToken},
+		"_":		[]string {strconv.FormatInt(makeTimestamp(), 10)},
+	})
+	defer resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var decoded map[string]interface{}
+
+	err = json.Unmarshal(content, &decoded)
+	if err != nil {
+		return "", err
+	}
+
+	if len(decoded["umqid"].(string)) <= 0 {
+		return "", errors.New("Unable to retreive umqid.")
+	}
+
+	return decoded["umqid"].(string), nil
+}
+
+func makeTimestamp() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
+}
