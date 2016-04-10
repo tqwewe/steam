@@ -184,7 +184,7 @@ func Message(recipient, message string) error {
 
 	err = json.Unmarshal(content, &decoded)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if decoded["error"].(string) != "OK" {
