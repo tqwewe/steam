@@ -16,6 +16,8 @@ import (
 	"regexp"
 )
 
+const apiKey = "2B2A0C37AC20B5DC2234E579A2ABB11C"
+var Steamid string
 var Jar *cookiejar.Jar
 var Client *http.Client
 var err error
@@ -147,6 +149,8 @@ func Login(username, password string) error {
 		return err
 	}
 
+	Steamid = transfer["transfer_parameters"].(map[string]interface{})["steamid"].(string)
+
 	return nil
 }
 
@@ -162,13 +166,13 @@ func Message(recipient, message string) error {
 	}
 
 	resp, err := Client.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
-		"steamid_dst":		[]string {recipient},
-		"text":			[]string {message},
-		"umqid":		[]string {umqid},
-		"_":			[]string {strconv.FormatInt(makeTimestamp(), 10)},
-		"type":			[]string {"saytext"},
-		"jsonp":		[]string {"1"},
-		"access_token":		[]string {accessToken},
+		"steamid_dst":		[]string{recipient},
+		"text":			[]string{message},
+		"umqid":		[]string{umqid},
+		"_":			[]string{strconv.FormatInt(makeTimestamp(), 10)},
+		"type":			[]string{"saytext"},
+		"jsonp":		[]string{"1"},
+		"access_token":		[]string{accessToken},
 	})
 	defer resp.Body.Close()
 	if err != nil {
@@ -189,6 +193,89 @@ func Message(recipient, message string) error {
 
 	if decoded["error"].(string) != "OK" {
 		return errors.New(decoded["error"].(string))
+	}
+
+	return nil
+}
+
+func Broadcast(message string) error {
+	resp, err := Client.Get("http://api.steampowered.com/ISteamUser/GetFriendList/v0001/?" + url.Values{
+		"key":		[]string{apiKey},
+		"steamid":	[]string{Steamid},
+		"relationship": []string{"friend"},
+	}.Encode())
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var friends map[string]interface{}
+
+	err = json.Unmarshal(content, &friends)
+	if err != nil {
+		return err
+	}
+
+	for _, val := range friends["friendslist"].(map[string]interface{})["friends"].([]interface{}) {
+		err = Message(val.(map[string]interface{})["steamid"].(string), message)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func InviteToGroup(recipients []string, groupid string) error {
+	accessToken, err := getAccessToken()
+	if err != nil {
+		return err
+	}
+
+	var inviteeList string
+	for count, val := range recipients {
+		if count == 0 {
+			inviteeList += "["
+		}
+		inviteeList += `"` + val + `"`
+		if count == len(recipients) - 1 {
+			inviteeList += "]"
+		} else {
+			inviteeList += ","
+		}
+	}
+
+	resp, err := Client.PostForm("http://steamcommunity.com/actions/GroupInvite", url.Values{
+		"json":		[]string{"1"},
+		"type":		[]string{"groupInvite"},
+		"group":	[]string{groupid},
+		"sessionID":	[]string{accessToken},
+		"invitee_list":	[]string{inviteeList},
+	})
+	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var decoded map[string]interface{}
+
+	err = json.Unmarshal(content, &decoded)
+	if err != nil {
+		return err
+	}
+
+	if decoded["results"].(string) != "OK" {
+		return errors.New(decoded["results"].(string))
 	}
 
 	return nil
@@ -230,10 +317,10 @@ func getUmqid() (string, error) {
 	accessToken, err := getAccessToken()
 
 	resp, err := Client.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001", url.Values{
-		"jsonp":	[]string {"1"},
-		"ui_mode":	[]string {"web"},
-		"access_token":	[]string {accessToken},
-		"_":		[]string {strconv.FormatInt(makeTimestamp(), 10)},
+		"jsonp":	[]string{"1"},
+		"ui_mode":	[]string{"web"},
+		"access_token":	[]string{accessToken},
+		"_":		[]string{strconv.FormatInt(makeTimestamp(), 10)},
 	})
 	defer resp.Body.Close()
 	if err != nil {
