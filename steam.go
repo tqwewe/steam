@@ -14,6 +14,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"fmt"
 )
 
 const apiKey = "2B2A0C37AC20B5DC2234E579A2ABB11C"
@@ -22,13 +23,15 @@ var Jar *cookiejar.Jar
 var Client *http.Client
 var err error
 
+type callBack(string)
+
 func init() {
 	Jar, err := cookiejar.New(nil)
 	if err != nil {
 		panic(err)
 	}
 
-	Client = &http.Client{Jar: Jar}
+	Client = &http.Client{Jar: Jar, Timeout: time.Duration(40 * time.Second)}
 }
 
 func Login(username, password string) error {
@@ -53,6 +56,7 @@ func Login(username, password string) error {
 	}
 
 	var decoded map[string]interface{}
+
 	err = json.Unmarshal(content, &decoded)
 	if err != nil {
 		return err
@@ -154,7 +158,20 @@ func Login(username, password string) error {
 	return nil
 }
 
-func Message(recipient, message string) error {
+func Logout() error {
+	sessionid, err := getSessionid()
+	if err != nil {
+		return err
+	}
+
+	Client.PostForm("https://steamcommunity.com/login/logout/", url.Values{
+		"sessionid":	[]string{sessionid},
+	})
+
+	return nil
+}
+
+func Message(recipient int64, message string) error {
 	umqid, err := getUmqid()
 	if err != nil {
 		return err
@@ -166,7 +183,7 @@ func Message(recipient, message string) error {
 	}
 
 	resp, err := Client.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
-		"steamid_dst":		[]string{recipient},
+		"steamid_dst":		[]string{strconv.FormatInt(recipient, 10)},
 		"text":			[]string{message},
 		"umqid":		[]string{umqid},
 		"_":			[]string{strconv.FormatInt(makeTimestamp(), 10)},
@@ -222,7 +239,7 @@ func Broadcast(message string) error {
 	}
 
 	for _, val := range friends["friendslist"].(map[string]interface{})["friends"].([]interface{}) {
-		err = Message(val.(map[string]interface{})["steamid"].(string), message)
+		err = Message(val.(map[string]interface{})["steamid"].(int64), message)
 		if err != nil {
 			return err
 		}
@@ -231,18 +248,20 @@ func Broadcast(message string) error {
 	return nil
 }
 
-func InviteToGroup(recipients []string, groupid string) error {
-	accessToken, err := getAccessToken()
+// TODO Complete InviteToGroup function
+func InviteToGroup(recipients []int64, groupid string) error {
+	sessionid, err := getSessionid()
 	if err != nil {
 		return err
 	}
 
 	var inviteeList string
+
 	for count, val := range recipients {
 		if count == 0 {
 			inviteeList += "["
 		}
-		inviteeList += `"` + val + `"`
+		inviteeList += `"` + strconv.FormatInt(val, 10) + `"`
 		if count == len(recipients) - 1 {
 			inviteeList += "]"
 		} else {
@@ -254,7 +273,7 @@ func InviteToGroup(recipients []string, groupid string) error {
 		"json":		[]string{"1"},
 		"type":		[]string{"groupInvite"},
 		"group":	[]string{groupid},
-		"sessionID":	[]string{accessToken},
+		"sessionID":	[]string{sessionid},
 		"invitee_list":	[]string{inviteeList},
 	})
 	defer resp.Body.Close()
@@ -279,6 +298,71 @@ func InviteToGroup(recipients []string, groupid string) error {
 	}
 
 	return nil
+}
+
+func ListenAndServer(callback func(user int64, message string)) error {
+	umqid, err := getUmqid()
+	if err != nil {
+		return err
+	}
+
+	accessToken, err := getAccessToken()
+	if err != nil {
+		return err
+	}
+
+	var pollid int64
+	var msg int64
+
+	for {
+		resp, err := Client.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Poll/v0001/?" + url.Values{
+			"jsonp":		[]string{"jQuery1111001475823658514086_1460550648276"},
+			"umqid":		[]string{umqid},
+			"message":		[]string{strconv.FormatInt(msg, 10)},
+			"pollid":		[]string{strconv.FormatInt(pollid, 10)},
+			"sectimeout":		[]string{"10"},
+			"secidletime":		[]string{"10"},
+			"use_accountids":	[]string{"1"},
+			"access_token":		[]string{accessToken},
+			"_":			[]string{strconv.FormatInt(makeTimestamp(), 10)},
+		}.Encode())
+		if err != nil {
+			return err
+		}
+
+		content, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+
+		var response map[string]interface{}
+
+		begging := regexp.MustCompile(`\/\*\*\/\w+\(`).FindSubmatch([]byte(content))[0]
+		extracted := string(content)[len(begging):len(string(content))-1]
+
+		fmt.Println(extracted)
+
+		err = json.Unmarshal([]byte(extracted), &response)
+		if err != nil {
+			return err
+		}
+		// (INDEX OUT OF RANGE? FIX THIS) <- Possibly Fixed!!!
+		for i, v := range response {
+			if i == "messages" {
+				if v.([]interface {})[0].(map[string]interface{})["type"].(string) == "saytext" && len(v.([]interface {})[0].(map[string]interface{})["text"].(string)) > 0 {
+					user := 76500000000000000 + (int64(v.([]interface {})[0].(map[string]interface{})["accountid_from"].(float64)) + int64(61197960265728))
+					message := v.([]interface {})[0].(map[string]interface{})["text"].(string)
+					//msg = response["messagelast"].(int64)
+					fmt.Println(strconv.FormatInt(int64(response["messagelast"].(float64)), 10))
+					callback(user, message)
+				}
+			}
+		}
+
+		pollid = int64(response["pollid"].(float64)) + 1
+
+		resp.Body.Close()
+	}
 }
 
 func GetCookie(cookie string) string {
@@ -344,6 +428,26 @@ func getUmqid() (string, error) {
 	}
 
 	return decoded["umqid"].(string), nil
+}
+
+func getSessionid() (string, error) {
+	resp, err := Client.Get("https://steamcommunity.com/")
+	defer resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	sessionid := regexp.MustCompile(`g_sessionID\s\=\s\"(\w+)\"\;`).FindSubmatch(content)
+	if sessionid == nil {
+		return "", errors.New("No sessionid available.")
+	}
+
+	return string(sessionid[1]), nil
 }
 
 func makeTimestamp() int64 {
