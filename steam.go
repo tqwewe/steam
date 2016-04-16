@@ -311,8 +311,40 @@ func ListenAndServer(callback func(user int64, message string)) error {
 		return err
 	}
 
-	var pollid int64
+	resp, err := Client.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001/?" + url.Values{
+		"jsonp":		[]string{"jQuery1111001475823658514086_1460550648276"},
+		"ui_mode":		[]string{"web"},
+		"access_token":		[]string{accessToken},
+		"_":			[]string{strconv.FormatInt(makeTimestamp(), 10)},
+	}.Encode())
+	if err != nil {
+		return err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var response map[string]interface{}
+
+	r, _ := regexp.Compile(`\/\*\*\/\w+\(`)
+	begging := r.FindString(string(content))
+	extracted := string(content)[len(begging):len(string(content))-1]
+
+	err = json.Unmarshal([]byte(extracted), &response)
+	if err != nil {
+		return err
+	}
+
 	var msg int64
+	var pollid int64
+
+	if val, ok := response["message"].(float64); ok {
+		msg = int64(val)
+	}
+
+	resp.Body.Close()
 
 	for {
 		resp, err := Client.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Poll/v0001/?" + url.Values{
@@ -320,8 +352,8 @@ func ListenAndServer(callback func(user int64, message string)) error {
 			"umqid":		[]string{umqid},
 			"message":		[]string{strconv.FormatInt(msg, 10)},
 			"pollid":		[]string{strconv.FormatInt(pollid, 10)},
-			"sectimeout":		[]string{"10"},
-			"secidletime":		[]string{"10"},
+			"sectimeout":		[]string{"20"},
+			"secidletime":		[]string{"20"},
 			"use_accountids":	[]string{"1"},
 			"access_token":		[]string{accessToken},
 			"_":			[]string{strconv.FormatInt(makeTimestamp(), 10)},
@@ -337,29 +369,35 @@ func ListenAndServer(callback func(user int64, message string)) error {
 
 		var response map[string]interface{}
 
-		begging := regexp.MustCompile(`\/\*\*\/\w+\(`).FindSubmatch([]byte(content))[0]
+		r, _ := regexp.Compile(`\/\*\*\/\w+\(`)
+		begging := r.FindString(string(content))
 		extracted := string(content)[len(begging):len(string(content))-1]
-
-		fmt.Println(extracted)
 
 		err = json.Unmarshal([]byte(extracted), &response)
 		if err != nil {
 			return err
 		}
-		// (INDEX OUT OF RANGE? FIX THIS) <- Possibly Fixed!!!
+
 		for i, v := range response {
 			if i == "messages" {
-				if v.([]interface {})[0].(map[string]interface{})["type"].(string) == "saytext" && len(v.([]interface {})[0].(map[string]interface{})["text"].(string)) > 0 {
-					user := 76500000000000000 + (int64(v.([]interface {})[0].(map[string]interface{})["accountid_from"].(float64)) + int64(61197960265728))
-					message := v.([]interface {})[0].(map[string]interface{})["text"].(string)
-					//msg = response["messagelast"].(int64)
-					fmt.Println(strconv.FormatInt(int64(response["messagelast"].(float64)), 10))
-					callback(user, message)
+				for _, messages := range v.([]interface {}) {
+					if messages.(map[string]interface{})["type"].(string) == "saytext" && len(messages.(map[string]interface{})["text"].(string)) > 0 {
+						user := 76500000000000000 + (int64(messages.(map[string]interface{})["accountid_from"].(float64)) + int64(61197960265728))
+						message := messages.(map[string]interface{})["text"].(string)
+						fmt.Println(message)
+						go callback(user, message)
+					}
 				}
+
 			}
 		}
 
-		pollid = int64(response["pollid"].(float64)) + 1
+		if val, ok := response["messagelast"].(float64); ok {
+			msg = int64(val)
+		}
+		if val, ok := response["pollid"].(float64); ok {
+			pollid = int64(val) + 1
+		}
 
 		resp.Body.Close()
 	}
