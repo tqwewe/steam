@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"regexp"
 	"fmt"
+	"strings"
 )
 
 // It seems like the max invites according to research done by
@@ -44,6 +45,7 @@ func Login(username, password string, checkCaptcha bool) error {
 	var resp 	*http.Response
 	var doNotCache	string
 	var captchaInput string
+	var captchaGid string
 
 	doNotCache = strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)
 
@@ -73,25 +75,28 @@ func Login(username, password string, checkCaptcha bool) error {
 		return errors.New("Failed to retrieve RSA key.")
 	}
 
-	// Captcha check
-	resp, err = Client.Get("https://steamcommunity.com/login/home/?goto=0")
-	if err != nil {
-		return err
-	}
+	if checkCaptcha {
+		// Captcha check
+		resp, err = Client.Get("https://steamcommunity.com/login/home/?goto=0")
+		if err != nil {
+			return err
+		}
 
-	content, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+		content, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 
-	// captcha_needed true/false bool
-	captcha := regexp.MustCompile(`\bgidCaptcha:\B\s"(\w+)"`).FindSubmatch(content)
-	if captcha != nil {
-		if len(string(captcha[0])) > 4 {
-			fmt.Print("Captcha required. Go to https://steamcommunity.com/login/rendercaptcha/?gid=" + string(captcha[0]) + " and enter the characters here to continue: ")
-			_, err := fmt.Scan(&captchaInput)
-			if err != nil {
-				return err
+		// captcha_needed true/false bool
+		captcha := regexp.MustCompile(`\bgidCaptcha:\B\s"(\w+)"`).FindSubmatch(content)
+		if captcha != nil {
+			captchaGid, _ = StringBetween(string(captcha[0]), `gidCaptcha: "`, `"`)
+			if len(string(captcha[0])) > 4 {
+				fmt.Print("Captcha required. Go to https://steamcommunity.com/login/rendercaptcha/?gid=" + captchaGid + " and enter the characters here to continue: ")
+				_, err := fmt.Scan(&captchaInput)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -140,7 +145,7 @@ func Login(username, password string, checkCaptcha bool) error {
 		"username": 	{username},
 		"password": 	{base64.StdEncoding.EncodeToString(encrypted[0:len(encrypted)])},
 		"rsatimestamp":	{decoded["timestamp"].(string)},
-		"captchagid":	{string(captcha[0])},
+		"captchagid":	{captchaGid},
 		"captcha_text": {captchaInput},
 	})
 	if err != nil {
@@ -529,4 +534,18 @@ func getSessionid() (string, error) {
 
 func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+// stringBetween returns a substring located between the first occurrence of
+// both the provided start and end strings. An error will be returned if
+// str does not include both start and end as a substring.
+func StringBetween(str, start, end string) (string, error) {
+	if strings.Index(str, start) == -1 {
+		return str, errors.New("String does not include start as substring.")
+	}
+	str = str[len(start)+strings.Index(str, start):]
+	if strings.Index(str, end) == -1 {
+		return str, errors.New("String does not include end as substring.")
+	}
+	return str[:strings.Index(str, end)], nil
 }
