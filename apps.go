@@ -73,6 +73,9 @@ func GetNewsForApp(appid, count, maxLength int) (AppNews, error) {
 	}
 
 	if err := json.Unmarshal(content, &newsForAppResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return news, jsonUnmarshallErrorCheck(content)
+		}
 		return news, err
 	}
 
@@ -110,6 +113,9 @@ func GetGlobalAchievementPercentagesForApp(appid int) (GlobalAchievementPercenta
 	}
 
 	if err := json.Unmarshal(content, &globalAchievementPercentagesForAppResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return achievements, jsonUnmarshallErrorCheck(content)
+		}
 		return achievements, err
 	}
 
@@ -146,6 +152,9 @@ func GetAppList() (AppList, error) {
 	}
 
 	if err := json.Unmarshal(content, &appListResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return appList, jsonUnmarshallErrorCheck(content)
+		}
 		return appList, err
 	}
 
@@ -178,6 +187,9 @@ func GetNumberOfCurrentPlayers(appid int) (int, error) {
 	}
 
 	if err := json.Unmarshal(content, &numberOfCurrentPlayersResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return 0, jsonUnmarshallErrorCheck(content)
+		}
 		return 0, err
 	}
 

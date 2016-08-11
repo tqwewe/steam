@@ -60,6 +60,9 @@ func (acc *Account) Message(recipient int64, message string) error {
 		Error string
 	}
 	if err := json.Unmarshal(content, &messageResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return jsonUnmarshallErrorCheck(content)
+		}
 		return err
 	}
 
@@ -101,8 +104,10 @@ func (acc *Account) Broadcast(message string) error {
 			}
 			    }
 	}
-	err = json.Unmarshal(content, &friendsResponse)
-	if err != nil {
+	if err = json.Unmarshal(content, &friendsResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return jsonUnmarshallErrorCheck(content)
+		}
 		return err
 	}
 
@@ -167,6 +172,9 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 		Push		int
 	}
 	if err = json.Unmarshal(content, &logonResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return jsonUnmarshallErrorCheck(content)
+		}
 		return err
 	}
 
@@ -225,6 +233,9 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 			Messagebase int
 		}
 		if err = json.Unmarshal(content, &pollResponse); err != nil {
+			if err.Error() == "invalid character '<' looking for beginning of value" {
+				return jsonUnmarshallErrorCheck(content)
+			}
 			return err
 		}
 
@@ -410,6 +421,9 @@ func GetPlayerAchievements(steamid int64, appid int, apikey string) (PlayerAchie
 	}
 
 	if err := json.Unmarshal(content, &playerAchievementsResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return plyAchievements, jsonUnmarshallErrorCheck(content)
+		}
 		return plyAchievements, err
 	}
 

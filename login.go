@@ -43,6 +43,9 @@ func Login(username, password string) (*Account, error) {
 		Token_gid string
 	}
 	if err := json.Unmarshal(content, &rsakeyResult); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return &acc, jsonUnmarshallErrorCheck(content)
+		}
 		return &acc, err
 	}
 
@@ -88,6 +91,9 @@ func Login(username, password string) (*Account, error) {
 		Message string
 	}
 	if err = json.Unmarshal(content, &loginResult); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return &acc, jsonUnmarshallErrorCheck(content)
+		}
 		return &acc, err
 	}
 
@@ -208,6 +214,9 @@ func (acc *Account) Relogin() error {
 		Message string
 	}
 	if err = json.Unmarshal(content, &loginResult); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return jsonUnmarshallErrorCheck(content)
+		}
 		return err
 	}
 

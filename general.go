@@ -10,6 +10,7 @@ import (
 	"time"
 	"strings"
 	"math/big"
+	"errors"
 )
 
 type Account struct {
@@ -161,4 +162,36 @@ func Steamid64ToSteamid(steamid int64) string {
 // makeTimestamp returns the current Unix timestamp.
 func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+// stringBetween returns a substring located between the first occurrence of
+// both the provided start and end strings. An error will be returned if
+// str does not include both start and end as a substring.
+func stringBetween(str, start, end string) (string, error) {
+	if strings.Index(str, start) == -1 {
+		return str, errors.New("String does not include start as substring.")
+	}
+	str = str[len(start)+strings.Index(str, start):]
+	if strings.Index(str, end) == -1 {
+		return str, errors.New("String does not include end as substring.")
+	}
+	return str[:strings.Index(str, end)], nil
+}
+
+func jsonUnmarshallErrorCheck(content []byte) error {
+	var errorPage string
+	if h1Index := strings.Index(string(content), "</h1>"); h1Index != -1 {
+		errorPage = string(content)[h1Index:]
+	}
+
+	allParts := regexp.MustCompile(`<\/?\w+>`).FindAllString(errorPage, -1)
+	for _, part := range allParts {
+		if part == "</h1>" {
+			errorPage = strings.Replace(errorPage, part, " ", -1)
+			continue
+		}
+		errorPage = strings.Replace(errorPage, part, "", -1)
+	}
+
+	return errors.New(errorPage)
 }
