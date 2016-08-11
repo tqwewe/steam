@@ -5,13 +5,11 @@ import (
 	"math/big"
 	"encoding/base64"
 	"crypto/rand"
-	"errors"
 )
 
 // TODO Tidy up encryptPassword function
 // encryptPassword encrypts a given string using a modulus and exponent.
-// This is required for Steam passwords when logging in.
-func encryptPassword(password, modulus, exponent string) (string, error) {
+func encryptPassword(password, modulus, exponent string) string {
 	// Set encryption variables
 	var privateKey *rsa.PrivateKey
 	var publicKey rsa.PublicKey
@@ -22,24 +20,24 @@ func encryptPassword(password, modulus, exponent string) (string, error) {
 	// Generate Private Key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 1024);
 	if err != nil {
-		return "", err
+		return ""
 	}
 
 	privateKey.Precompute()
 
 	if err := privateKey.Validate(); err != nil {
-		return "", err
+		return ""
 	}
 
 	mod, success := new(big.Int).SetString(modulus, 16)
 	if !success {
-		return "", errors.New("Unable to set modulus.")
+		return ""
 	}
 
 
 	exp, success := new(big.Int).SetString(exponent, 16)
 	if !success {
-		return "", errors.New("Unable to set modulus.")
+		return ""
 	}
 
 	publicKey.N = mod
@@ -47,10 +45,10 @@ func encryptPassword(password, modulus, exponent string) (string, error) {
 
 	encrypted, err = rsa.EncryptPKCS1v15(rand.Reader, &publicKey, plain_text)
 	if err != nil {
-		return "", err
+		return ""
 	}
 
-	return base64.StdEncoding.EncodeToString(encrypted[0:len(encrypted)]), nil
+	return base64.StdEncoding.EncodeToString(encrypted[0:len(encrypted)])
 }
 
 /*func encryptPasswordV2(password, modulus string, exponent int64) string {

@@ -8,150 +8,182 @@ import (
 	"encoding/json"
 )
 
-type AppNews struct {
-	Appnews struct{
-		Appid int
-		Newsitems []struct{
-			Gid string
-			Title string
-			Url string
-			Is_external_url bool
-			Author string
-			Contents string
-			Feedlabel string
-			Date int
-			Feedname string
-		}
-		}
+type AppNews []struct {
+	Author		string
+	Contents	string
+	Date		int
+	Feedlabel	string
+	Feedname	string
+	Gid		string
+	Is_external_url	bool
+	Title		string
+	Url		string
 }
 
-type GlobalAchievementPercentage struct {
-	Achievementpercentages struct{
-				       Achievements []struct{
-					       Name string
-					       Percent float64
-				       }
-			       }
+type GlobalAchievementPercentage []struct {
+	Name	string
+	Percent	float64
 }
 
-type AppList struct {
-	Applist struct{
-		Apps struct{
-			App []struct{
-				Appid int
-				Name string
-			}
-		     }
-		}
+type AppList []struct {
+	Appid	int
+	Name	string
 }
 
-type NumberOfCurrentPlayers struct {
-	Response struct{
-		Player_count int
-		Result int
-		 }
-}
-
-// GetNewsForApp returns the latest of a game specified by its appid.
-// The count parameter specifies how many news items to return. It
-// is returned in order from most recent. The maxLength parameter
-// is used to specify max length of the news content to be returned.
-func GetNewsForApp(appid, count, maxLength int) (*AppNews, error) {
+// GetNewsForApp returns a type AppNews containing all the news for a specific appid in order from most recent.
+//
+// The count parameter specific how many news items to return.
+// The maxLength parameter is used to specify how many characters of each news item to show.
+// If 0 is used for maxLength then there will be no limit on how many characters to return.
+//
+// If an error occurs then an empty AppNews will be returned along with the error.
+func GetNewsForApp(appid, count, maxLength int) (AppNews, error) {
 	var news AppNews
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?" + url.Values{
 		"appid":	{strconv.FormatInt(int64(appid), 10)},
 		"count":	{strconv.FormatInt(int64(count), 10)},
 		"maxlength":	{strconv.FormatInt(int64(maxLength), 10)},
-		"format":	{"json"},
 	}.Encode())
 	if err != nil {
-		return &news, err
+		return news, err
 	}
 	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &news, err
+		return news, err
 	}
 
-	if err := json.Unmarshal(content, &news); err != nil {
-		return &news, err
+	var newsForAppResponse struct {
+		Appnews struct{
+				Appid int
+				Newsitems []struct {
+					Author		string
+					Contents	string
+					Date		int
+					Feedlabel	string
+					Feedname	string
+					Gid		string
+					Is_external_url	bool
+					Title		string
+					Url		string
+				}
+			}
 	}
 
-	return &news, err
+	if err := json.Unmarshal(content, &newsForAppResponse); err != nil {
+		return news, err
+	}
+
+	news = newsForAppResponse.Appnews.Newsitems
+	return news, nil
 }
 
-// GetGlobalAchievementPercentagesForApp returns on global achievements overview of a
-// specific appid in percentages.
-func GetGlobalAchievementPercentagesForApp(appid int) (*GlobalAchievementPercentage, error) {
+// GetGlobalAchievementPercentagesForApp returns a type GlobalAchievementPercentage containing all existing achievements
+// on the Steam network and their global achieved percentage.
+//
+// If an error occurs then an empty GlobalAchievementPercentage will be returned.
+func GetGlobalAchievementPercentagesForApp(appid int) (GlobalAchievementPercentage, error) {
 	var achievements GlobalAchievementPercentage
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?" + url.Values{
 		"gameid":	{strconv.FormatInt(int64(appid), 10)},
-		"format":	{"json"},
 	}.Encode())
 	if err != nil {
-		return &achievements, err
+		return achievements, err
 	}
 	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &achievements, err
+		return achievements, err
 	}
 
-	if err := json.Unmarshal(content, &achievements); err != nil {
-		return &achievements, err
+	var globalAchievementPercentagesForAppResponse struct {
+		Achievementpercentages struct{
+					       Achievements []struct{
+						       Name string
+						       Percent float64
+					       }
+				       }
 	}
 
-	return &achievements, err
+	if err := json.Unmarshal(content, &globalAchievementPercentagesForAppResponse); err != nil {
+		return achievements, err
+	}
+
+	achievements = globalAchievementPercentagesForAppResponse.Achievementpercentages.Achievements
+	return achievements, nil
 }
 
-// GetAppList returns a type AppList
-// containing every appid on Steam.
-func GetAppList() (*AppList, error) {
+// GetAppList returns a type AppList containing all existing appids on the Steam network.
+//
+// If an error occurs then an empty AppList will be returned along with the error.
+func GetAppList() (AppList, error) {
 	var appList AppList
 
 	resp, err := http.Get("https://api.steampowered.com/ISteamApps/GetAppList/v1")
 	if err != nil {
-		return &appList, err
+		return appList, err
 	}
 	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &appList, err
+		return appList, err
 	}
 
-	if err := json.Unmarshal(content, &appList); err != nil {
-		return &appList, err
+	var appListResponse struct {
+		Applist struct{
+				Apps struct{
+					     App []struct{
+						     Appid int
+						     Name string
+					     }
+				     }
+			}
 	}
 
-	return &appList, nil
+	if err := json.Unmarshal(content, &appListResponse); err != nil {
+		return appList, err
+	}
+
+	appList = appListResponse.Applist.Apps.App
+	return appList, nil
 }
 
-// GetNumberOfCurrentPlayers returns the number of players for a specific
-// appid.
-func GetNumberOfCurrentPlayers(appid int) (*NumberOfCurrentPlayers, error) {
-	var currentPlayers NumberOfCurrentPlayers
-
+// GetNumberOfCurrentPlayers returns the number of players for a specified appid.
+//
+// If an error occurs then a 0 is returned along with the error.
+func GetNumberOfCurrentPlayers(appid int) (int, error) {
 	resp, err := http.Get("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1?" + url.Values{
 		"appid": {strconv.FormatInt(int64(appid), 10)},
 	}.Encode())
 	if err != nil {
-		return &currentPlayers, err
+		return 0, err
 	}
 	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &currentPlayers, err
+		return 0, err
 	}
 
-	if err := json.Unmarshal(content, &currentPlayers); err != nil {
-		return &currentPlayers, err
+	var numberOfCurrentPlayersResponse struct {
+		Response struct{
+				 Player_count int
+				 Result int
+			 }
 	}
 
-	return &currentPlayers, nil
+	if err := json.Unmarshal(content, &numberOfCurrentPlayersResponse); err != nil {
+		return 0, err
+	}
+
+	if numberOfCurrentPlayersResponse.Response.Result != 1 {
+		return 0, err
+	}
+
+	return numberOfCurrentPlayersResponse.Response.Player_count, nil
 }

@@ -13,19 +13,23 @@ import (
 	"regexp"
 )
 
-// Message sends a message to a specified steamid using a logged in
-// Account.
+type PlayerAchievements []struct {
+	Achieved	int
+	Apiname		string
+}
+
+// Message sends a message to a specified steamid using a logged in Account.
 func (acc *Account) Message(recipient int64, message string) error {
 	if len(acc.Umqid) <= 0 {
-		if umqid, err := acc.getUmqid(); err != nil {
-			return err
+		if umqid := acc.getUmqid(); umqid == "" {
+			return errors.New("unable to retrieve umqid")
 		} else {
 			acc.Umqid = umqid
 		}
 	}
 	if len(acc.AccessToken) <= 0 {
-		if accessToken, err := acc.getAccessToken(); err != nil {
-			return err
+		if accessToken := acc.getAccessToken(); accessToken == "" {
+			return errors.New("unable to retrieve umqid")
 		} else {
 			acc.AccessToken = accessToken
 		}
@@ -125,13 +129,13 @@ func (acc *Account) Broadcast(message string) error {
 // ListenAndServe stops execution and loops listening to messages from other Steam
 // users. When a message is received, the argument callback is called.
 func (acc *Account) ListenAndServe(callback func(user int64, message string)) error {
-	if umqid, err := acc.getUmqid(); err != nil {
-		return err
+	if umqid := acc.getUmqid(); umqid == "" {
+		return errors.New("unable to retrieve umqid")
 	} else {
 		acc.Umqid = umqid
 	}
-	if accessToken, err := acc.getAccessToken(); err != nil {
-		return err
+	if accessToken := acc.getAccessToken(); accessToken == "" {
+		return errors.New("unable to retrieve accessToken")
 	} else {
 		acc.AccessToken = accessToken
 	}
@@ -154,13 +158,13 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 	content = []byte(string(content)[strings.Index(string(content), `{`):len(string(content))-1])
 
 	var logonResponse struct{
-		Steamid string
-		Error string
-		Umqid string
-		Timestamp int64
-		Utc_timestamp int64
-		Message int
-		Push int
+		Steamid		string
+		Error		string
+		Umqid		string
+		Timestamp	int64
+		Utc_timestamp	int64
+		Message		int
+		Push		int
 	}
 	if err = json.Unmarshal(content, &logonResponse); err != nil {
 		return err
@@ -241,6 +245,9 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 	return nil
 }
 
+// SearchForID tries to retrieve a Steamid64 using a query (search).
+//
+// If an error occurs or the steamid was unable to be resolved from the query then a 0 is returned.
 func SearchForID(query, apikey string) int64 {
 	query = strings.Replace(query, " ", "", -1)
 
@@ -367,4 +374,49 @@ func SearchForID(query, apikey string) int64 {
 	}
 
 	return output
+}
+
+// GetPlayerAchievements returns a type PlayerAchievements containing all achievements achieved by a specified steamid.
+//
+// If an error occurs then an empty PlayerAchievements will be returned along with the error.
+func GetPlayerAchievements(steamid int64, appid int, apikey string) (PlayerAchievements, error) {
+	var plyAchievements PlayerAchievements
+
+	resp, err := http.Get("https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1?" + url.Values{
+		"steamid":	{strconv.FormatInt(steamid, 10)},
+		"appid":	{strconv.FormatInt(int64(appid), 10)},
+		"key":		{apikey},
+	}.Encode())
+	if err != nil {
+		return plyAchievements, err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return plyAchievements, err
+	}
+
+	var playerAchievementsResponse struct {
+		Playerstats struct{
+				    SteamID string
+				    GameName string
+				    Success bool
+				    Achievements []struct {
+					    Achieved int
+					    Apiname string
+				    }
+			    }
+	}
+
+	if err := json.Unmarshal(content, &playerAchievementsResponse); err != nil {
+		return plyAchievements, err
+	}
+
+	if playerAchievementsResponse.Playerstats.Success != true {
+		return plyAchievements, err
+	}
+
+	plyAchievements = playerAchievementsResponse.Playerstats.Achievements
+	return plyAchievements, nil
 }

@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
-// Login logs into steam using the specified username
-// and password and returns a new type Account
+// Login logs into steam using the specified username and password and returns a type Account.
 func Login(username, password string) (*Account, error) {
 	acc := Account{
 		Username: username,
@@ -50,9 +50,9 @@ func Login(username, password string) (*Account, error) {
 		return &acc, errors.New("failed to retrieve RSA key")
 	}
 
-	encryptedPassword, err := encryptPassword(acc.Password, rsakeyResult.Publickey_mod, rsakeyResult.Publickey_exp)
-	if err != nil {
-		return &acc, err
+	encryptedPassword := encryptPassword(acc.Password, rsakeyResult.Publickey_mod, rsakeyResult.Publickey_exp)
+	if encryptedPassword == "" {
+		return &acc, errors.New("unable to encrypt password")
 	}
 
 	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values {
@@ -124,18 +124,22 @@ func (acc *Account) Logout() {
 	})
 }
 
-// IsLoggedIn returns a bool based on
-// weather an Account is logged in or
-// not.
+// IsLoggedIn returns a bool based on weather an Account is logged in or not.
 func (acc *Account) IsLoggedIn() bool {
-	if _, err := acc.getAccessToken(); err != nil {
+	resp, err := acc.HttpClient.Get("http://steamcommunity.com/")
+	if err != nil {
 		return false
 	}
-	return true
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false
+	}
+
+	return !strings.Contains(string(content), "https://steamcommunity.com/login/home")
 }
 
-// Login logs into steam using the specified username
-// and password and returns a new type Account
+// Login logs into Steam using the specified username and password and returns a new type Account.
 func (acc *Account) Relogin() error {
 	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values {
 		"donotcache": {strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
@@ -166,9 +170,9 @@ func (acc *Account) Relogin() error {
 		return errors.New("failed to retrieve RSA key")
 	}
 
-	encryptedPassword, err := encryptPassword(acc.Password, rsakeyResult.Publickey_mod, rsakeyResult.Publickey_exp)
+	encryptedPassword := encryptPassword(acc.Password, rsakeyResult.Publickey_mod, rsakeyResult.Publickey_exp)
 	if err != nil {
-		return err
+		return errors.New("unable to encrypt password")
 	}
 
 	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values {
