@@ -16,7 +16,9 @@ go get github.com/Acidic9/steam
 
 To import it into your document:
 ```php
-import ("github.com/Acidic9/steam")
+import (
+	"github.com/Acidic9/steam"
+)
 ```
 
 ### Example Usage

@@ -125,8 +125,9 @@ func Login(username, password string) (*Account, error) {
 
 // Logout logs out of Steam for a specified Account.
 func (acc *Account) Logout() {
+	sessionID, _ := acc.getSessionId()
 	acc.HttpClient.PostForm("https://steamcommunity.com/login/logout/", url.Values {
-		"sessionid":	[]string{acc.getSessionId()},
+		"sessionid":	{sessionID},
 	})
 }
 

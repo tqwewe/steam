@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"strings"
 	"errors"
-	"fmt"
 	"sync"
 	"net/http"
 	"regexp"
+	"fmt"
 )
 
 type PlayerAchievements []struct {
@@ -73,18 +73,9 @@ func (acc *Account) Message(recipient SteamID64, message string) error {
 	return nil
 }
 
-// TODO: Retrieve friends without using API key
-// Broadcast sends a specified message to all
-// steamid's for Account
+// Broadcast sends a specified message to all SteamID's for Account.
 func (acc *Account) Broadcast(message string) error {
-	if !acc.apiKeyCheck() {
-		return errors.New("missing API key")
-	}
-	resp, err := acc.HttpClient.Get("http://api.steampowered.com/ISteamUser/GetFriendList/v0001?" + url.Values{
-		"key":		{acc.ApiKey},
-		"steamid":	{strconv.FormatUint(uint64(acc.SteamID), 10)},
-		"relationship": {"friend"},
-	}.Encode())
+	resp, err := acc.HttpClient.Get("http://steamcommunity.com/profiles/76561198193537875/friends/?xml=1")
 	if err != nil {
 		return err
 	}
@@ -95,39 +86,116 @@ func (acc *Account) Broadcast(message string) error {
 		return err
 	}
 
-	var friendsResponse struct{
-		Friendslist struct{
-			Friends []struct{
-				Steamid string
-				Relationship string
-				Friend_since int64
+	friends := make([]SteamID64, 0, 32)
+
+	friendResponse := regexp.MustCompile(`<friend>(.*?)<\/friend>`).FindAllSubmatch(content, -1)
+	for _, friendTag := range friendResponse {
+		if len(friendTag) >= 2 {
+			parsedFriend, err := strconv.ParseUint(string(friendTag[1]), 10, 64)
+			if err != nil {
+				continue
 			}
-			    }
+			friends = append(friends, SteamID64(parsedFriend))
+		}
 	}
-	if err = json.Unmarshal(content, &friendsResponse); err != nil {
+
+	var wg sync.WaitGroup
+
+	for _, friend := range friends {
+		wg.Add(1)
+		go func(friendID SteamID64) {
+			defer wg.Done()
+			err = acc.Message(friendID, message)
+			if err != nil {
+				fmt.Println(friendID, err)
+			}
+		}(friend)
+	}
+
+	wg.Wait()
+	return nil
+}
+
+// InviteToGroup invited a set of SteamID64's to a Steam group.
+func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) error {
+	sessionID, err := acc.getSessionId()
+	if err != nil {
+		return err
+	}
+
+	inviteeList := `[`
+	for i, steam64 := range recipients {
+		inviteeList += `"` + strconv.FormatUint(uint64(steam64), 10) + `"`
+		if i < len(recipients)-1 {
+			inviteeList += ","
+		}
+	}
+	inviteeList += `]`
+
+	resp, err := acc.HttpClient.PostForm("http://steamcommunity.com/actions/GroupInvite", url.Values{
+		"json":		{"1"},
+		"type":		{"groupInvite"},
+		"group":	{strconv.FormatUint(uint64(groupID), 10)},
+		"sessionID":	{sessionID},
+		"invitee_list":	{inviteeList},
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if string(content) == "" || string(content) == "null" {
+		errors.New("Failed to invite user(s) to group")
+	}
+
+	var groupInviteResponse struct{
+		Duplicate bool
+		GroupId string
+		Results string
+	}
+
+	if err := json.Unmarshal(content, &groupInviteResponse); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
 			return jsonUnmarshallErrorCheck(content)
 		}
 		return err
 	}
 
-	var wg sync.WaitGroup
-
-	for _, friend := range friendsResponse.Friendslist.Friends {
-		if steamId, err := strconv.Atoi(friend.Steamid); err == nil {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				err = acc.Message(SteamID64(steamId), message)
-				if err != nil {
-					fmt.Println(steamId, err)
-				}
-			}()
-		}
+	if groupInviteResponse.Results != "OK" {
+		return errors.New("Error: " + groupInviteResponse.Results)
 	}
 
-	wg.Wait()
 	return nil
+}
+
+// ResolveGroupID tried to resolve the GroupID64 from a group custom url.
+func ResolveGroupID(groupVanityURL string) (GroupID, error) {
+	resp, err := http.Get("http://steamcommunity.com/groups/" + groupVanityURL + "/memberslistxml?xml=1")
+	if err != nil {
+		return GroupID(0), err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return GroupID(0), err
+	}
+
+	groupIDTags := regexp.MustCompile(`<groupID64>(\w+)<\/groupID64>`).FindSubmatch(content)
+	if len(groupIDTags) >= 2 {
+		groupid, err := strconv.ParseUint(string(groupIDTags[1]), 10, 64)
+		if err != nil {
+			return GroupID(0), err
+		}
+		return GroupID(groupid), nil
+	}
+
+	return GroupID(0), errors.New("Unable to resolve groupid")
 }
 
 // TODO: Fix issue with user logging out

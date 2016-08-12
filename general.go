@@ -16,7 +16,6 @@ type Account struct {
 	Password string
 	SteamID SteamID64
 	HttpClient *http.Client
-	ApiKey string
 	Umqid string
 	AccessToken string
 }
@@ -25,24 +24,44 @@ type SteamID		string	// STEAM_0:0:86173181
 type SteamID64		uint64	// 76561198132612090
 type SteamID32		uint32	// 172346362
 type SteamID3		string	// [U:1:172346362]
+type GroupID		uint64	//
 
 // getSessionId returns the Steam sessionid cookie.
 //
 // If no sessionid cookie is found, an empty string will be returned.
-func (acc *Account) getSessionId() string {
-	steamUrl, err := url.Parse("https://steamcommunity.com")
+func (acc *Account) getSessionId() (string, error) {
+	/*steamUrl, err := url.Parse("http://steamcommunity.com")
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	cookies := acc.HttpClient.Jar.Cookies(steamUrl)
 	for _, cookie := range cookies {
+		fmt.Println(cookie.Name)
 		if cookie.Name == "sessionid" {
-			return cookie.Value
+			return cookie.Value, nil
 		}
 	}
 
-	return ""
+	return "", errors.New("Could not find sessionid cookie")*/
+
+	resp, err := acc.HttpClient.Get("https://steamcommunity.com/")
+	defer resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	sessionid := regexp.MustCompile(`g_sessionID\s\=\s\"(\w+)\"\;`).FindSubmatch(content)
+	if sessionid == nil {
+		return "", errors.New("No sessionid available")
+	}
+
+	return string(sessionid[1]), nil
 }
 
 // getAccessToken returns the accesstoken of an Account.
@@ -109,12 +128,12 @@ func (acc *Account) getUmqid() string {
 }
 
 // apiKeyCheck returns a bool indicating weather the Account has an APIKey set.
-func (acc *Account) apiKeyCheck() bool {
+/*func (acc *Account) apiKeyCheck() bool {
 	if acc.ApiKey != "" {
 		return true
 	}
 	return false
-}
+}*/
 
 // makeTimestamp returns the current Unix timestamp.
 func makeTimestamp() int64 {
