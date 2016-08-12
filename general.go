@@ -24,7 +24,7 @@ type SteamID		string	// STEAM_0:0:86173181
 type SteamID64		uint64	// 76561198132612090
 type SteamID32		uint32	// 172346362
 type SteamID3		string	// [U:1:172346362]
-type GroupID		uint64	//
+type GroupID		uint64	// 103582791453729676
 
 // getSessionId returns the Steam sessionid cookie.
 //

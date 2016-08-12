@@ -3,9 +3,9 @@
 Steam is a package individually created by Acidic9 for Golang. It provides a huge range of features and functions and was made to be used with ease.
 
 Some major features include:
-  * Convert SteamID's to nearly any format which exists.
-  * Log into Steam with an account and send group/friend invites or message a friend.
-  * A huge amount of Steam's API features compiles into functions.
+  * Convert SteamID's to nearly any format.
+  * Log into Steam and send group/friend invites or message a friend.
+  * A huge amount of Steam's API features compiled into individual functions.
 
 ### Installation
 
