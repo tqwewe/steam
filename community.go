@@ -18,7 +18,7 @@ type PlayerAchievements []struct {
 	Apiname		string
 }
 
-// Message sends a message to a specified steamid using a logged in Account.
+// Message sends a message to a specified SteamID64 using a logged in Account.
 func (acc *Account) Message(recipient SteamID64, message string) error {
 	if len(acc.Umqid) <= 0 {
 		if umqid := acc.getUmqid(); umqid == "" {
@@ -116,7 +116,7 @@ func (acc *Account) Broadcast(message string) error {
 	return nil
 }
 
-// InviteToGroup invited a set of SteamID64's to a Steam group.
+// InviteToGroup invites a set of SteamID64's to a Steam group.
 func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) error {
 	sessionID, err := acc.getSessionId()
 	if err != nil {
@@ -173,7 +173,7 @@ func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) erro
 	return nil
 }
 
-// ResolveGroupID tried to resolve the GroupID64 from a group custom url.
+// ResolveGroupID tried to resolve the GroupID from a group custom url.
 func ResolveGroupID(groupVanityURL string) (GroupID, error) {
 	resp, err := http.Get("http://steamcommunity.com/groups/" + groupVanityURL + "/memberslistxml?xml=1")
 	if err != nil {
@@ -324,9 +324,10 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 	return nil
 }
 
-// SearchForID tries to retrieve a Steamid64 using a query (search).
+// TODO: Cleanup and fix SearchForID function
+// SearchForID tries to retrieve a SteamID64 using a query (search).
 //
-// If an error occurs or the steamid was unable to be resolved from the query then a 0 is returned.
+// If an error occurs or the SteamID was unable to be resolved from the query then a 0 is returned.
 func SearchForID(query, apikey string) SteamID64 {
 	query = strings.Replace(query, " ", "", -1)
 
@@ -455,9 +456,7 @@ func SearchForID(query, apikey string) SteamID64 {
 	return SteamID64(output)
 }
 
-// GetPlayerAchievements returns a type PlayerAchievements containing all achievements achieved by a specified steamid.
-//
-// If an error occurs then an empty PlayerAchievements will be returned along with the error.
+// GetPlayerAchievements returns a type PlayerAchievements containing all achievements achieved by a specified SteamID64.
 func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerAchievements, error) {
 	var plyAchievements PlayerAchievements
 

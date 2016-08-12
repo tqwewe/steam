@@ -146,7 +146,7 @@ func (acc *Account) IsLoggedIn() bool {
 	return !strings.Contains(string(content), "https://steamcommunity.com/login/home")
 }
 
-// Login logs into Steam using the specified username and password and returns a new type Account.
+// Relogin logs into Steam again from a previous type Account updating the session.
 func (acc *Account) Relogin() error {
 	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values {
 		"donotcache": {strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
