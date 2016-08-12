@@ -99,7 +99,7 @@ func Login(username, password string) (*Account, error) {
 
 	SteamId, err := strconv.Atoi(loginResult.Transfer_parameters.SteamId)
 	if err == nil {
-		acc.SteamId = int64(SteamId)
+		acc.SteamID = SteamID64(SteamId)
 	}
 
 	if loginResult.Success != true || loginResult.Login_complete != true {
@@ -123,7 +123,7 @@ func Login(username, password string) (*Account, error) {
 	return &acc, nil
 }
 
-// Logout logs out of Steam.
+// Logout logs out of Steam for a specified Account.
 func (acc *Account) Logout() {
 	acc.HttpClient.PostForm("https://steamcommunity.com/login/logout/", url.Values {
 		"sessionid":	[]string{acc.getSessionId()},
@@ -222,7 +222,7 @@ func (acc *Account) Relogin() error {
 
 	SteamId, err := strconv.Atoi(loginResult.Transfer_parameters.SteamId)
 	if err == nil {
-		acc.SteamId = int64(SteamId)
+		acc.SteamID = SteamID64(SteamId)
 	}
 
 	if loginResult.Success != true || loginResult.Login_complete != true {

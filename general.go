@@ -6,22 +6,25 @@ import (
 	"regexp"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 	"strings"
-	"math/big"
 	"errors"
 )
 
 type Account struct {
 	Username string
 	Password string
-	SteamId int64
+	SteamID SteamID64
 	HttpClient *http.Client
 	ApiKey string
 	Umqid string
 	AccessToken string
 }
+
+type SteamID		string	// STEAM_0:0:86173181
+type SteamID64		uint64	// 76561198132612090
+type SteamID32		uint32	// 172346362
+type SteamID3		string	// [U:1:172346362]
 
 // getSessionId returns the Steam sessionid cookie.
 //
@@ -113,60 +116,13 @@ func (acc *Account) apiKeyCheck() bool {
 	return false
 }
 
-// TODO Rename the steamid functions correctly
-// Steamid64To32 converts a given steam id
-// formatted in 64 bit to 32 bit form.
-func Steamid64To32(steamid int64) (int, error) {
-	steamid32, err := strconv.ParseInt(strconv.FormatInt(steamid, 10)[3:], 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return int(steamid32 - 61197960265728), nil
-}
-
-// Steamid32To64 converts a given steam id
-// formatted in 32 bit to 64 bit form.
-func Steamid32To64(steamid int) (int64, error) {
-	steamid64, err := strconv.ParseInt("765" + strconv.FormatInt(int64(steamid) + 61197960265728, 10), 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return steamid64, nil
-}
-
-// SteamidTo64 converts a given regular steam id to 64 bit.
-// E.g. STEAM_0:0:86173181 -> 76561198132612090
-func SteamidTo64(steamid string) int64 {
-	p := strings.Split(steamid, ":")
-	magic, _ := new(big.Int).SetString("76561197960265728", 10)
-	steam64, _ := new(big.Int).SetString(p[2], 10)
-	steam64 = steam64.Mul(steam64, big.NewInt(2))
-	steam64 = steam64.Add(steam64, magic)
-	auth, _ := new(big.Int).SetString(p[1], 10)
-	return steam64.Add(steam64, auth).Int64()
-}
-
-// Steamid64ToSteamid converts a given steam id 64 bit
-// to regular steam id.
-// E.g. 76561198132612090 -> STEAM_0:0:86173181
-func Steamid64ToSteamid(steamid int64) string {
-	id := new(big.Int).SetInt64(steamid)
-	magic, _ := new(big.Int).SetString("76561197960265728", 10)
-	id = id.Sub(id, magic)
-	isServer := new(big.Int).And(id, big.NewInt(1))
-	id = id.Sub(id, isServer)
-	id = id.Div(id, big.NewInt(2))
-	return "STEAM_0:" + isServer.String() + ":" + id.String()
-}
-
 // makeTimestamp returns the current Unix timestamp.
 func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
-// stringBetween returns a substring located between the first occurrence of
-// both the provided start and end strings. An error will be returned if
-// str does not include both start and end as a substring.
+// stringBetween returns a substring located between the first occurrence of both the provided start and end strings.
+// An error will be returned if str does not include both start and end as a substring.
 func stringBetween(str, start, end string) (string, error) {
 	if strings.Index(str, start) == -1 {
 		return str, errors.New("String does not include start as substring.")
@@ -178,16 +134,24 @@ func stringBetween(str, start, end string) (string, error) {
 	return str[:strings.Index(str, end)], nil
 }
 
+// jsonUnmarshallError is used to manage steam errors which are no json and return the message given.
 func jsonUnmarshallErrorCheck(content []byte) error {
 	var errorPage string
-	if h1Index := strings.Index(string(content), "</h1>"); h1Index != -1 {
+	if h1Index := strings.Index(string(content), "<body>"); h1Index != -1 {
 		errorPage = string(content)[h1Index:]
 	}
 
 	allParts := regexp.MustCompile(`<\/?\w+>`).FindAllString(errorPage, -1)
 	for _, part := range allParts {
-		if part == "</h1>" {
-			errorPage = strings.Replace(errorPage, part, " ", -1)
+		switch part {
+		case "</h1>":
+			errorPage = strings.Replace(errorPage, part, ": ", -1)
+			continue
+		case "<pre>":
+			errorPage = strings.Replace(errorPage, part, "'", -1)
+			continue
+		case "</pre>":
+			errorPage = strings.Replace(errorPage, part, "'", -1)
 			continue
 		}
 		errorPage = strings.Replace(errorPage, part, "", -1)

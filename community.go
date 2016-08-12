@@ -19,7 +19,7 @@ type PlayerAchievements []struct {
 }
 
 // Message sends a message to a specified steamid using a logged in Account.
-func (acc *Account) Message(recipient int64, message string) error {
+func (acc *Account) Message(recipient SteamID64, message string) error {
 	if len(acc.Umqid) <= 0 {
 		if umqid := acc.getUmqid(); umqid == "" {
 			return errors.New("unable to retrieve umqid")
@@ -36,7 +36,7 @@ func (acc *Account) Message(recipient int64, message string) error {
 	}
 
 	resp, err := acc.HttpClient.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
-		"steamid_dst":		{strconv.FormatInt(recipient, 10)},
+		"steamid_dst":		{strconv.FormatUint(uint64(recipient), 10)},
 		"text":			{message},
 		"umqid":		{acc.Umqid},
 		"access_token":		{acc.AccessToken},
@@ -82,7 +82,7 @@ func (acc *Account) Broadcast(message string) error {
 	}
 	resp, err := acc.HttpClient.Get("http://api.steampowered.com/ISteamUser/GetFriendList/v0001?" + url.Values{
 		"key":		{acc.ApiKey},
-		"steamid":	{strconv.Itoa(int(acc.SteamId))},
+		"steamid":	{strconv.FormatUint(uint64(acc.SteamID), 10)},
 		"relationship": {"friend"},
 	}.Encode())
 	if err != nil {
@@ -118,7 +118,7 @@ func (acc *Account) Broadcast(message string) error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = acc.Message(int64(steamId), message)
+				err = acc.Message(SteamID64(steamId), message)
 				if err != nil {
 					fmt.Println(steamId, err)
 				}
@@ -133,7 +133,7 @@ func (acc *Account) Broadcast(message string) error {
 // TODO: Fix issue with user logging out
 // ListenAndServe stops execution and loops listening to messages from other Steam
 // users. When a message is received, the argument callback is called.
-func (acc *Account) ListenAndServe(callback func(user int64, message string)) error {
+func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)) error {
 	if umqid := acc.getUmqid(); umqid == "" {
 		return errors.New("unable to retrieve umqid")
 	} else {
@@ -184,7 +184,7 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 
 	acc.Umqid = logonResponse.Umqid
 	if steamid, err := strconv.ParseInt(logonResponse.Steamid, 10, 64); err == nil {
-		acc.SteamId = steamid
+		acc.SteamID = SteamID64(steamid)
 	}
 	var pollid int64 = 1
 	var message int64 = int64(logonResponse.Message)
@@ -245,8 +245,8 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 
 		for _, message := range pollResponse.Messages {
 			if message.Type == "saytext" && len(message.Text) > 0 {
-				steamid, _ := Steamid32To64(int(message.Accountid_from))
-				callback(steamid, message.Text)
+				steam64 := SteamID32ToSteamID64(SteamID32(message.Accountid_from))
+				callback(SteamID64(steam64), message.Text)
 			}
 		}
 
@@ -259,7 +259,7 @@ func (acc *Account) ListenAndServe(callback func(user int64, message string)) er
 // SearchForID tries to retrieve a Steamid64 using a query (search).
 //
 // If an error occurs or the steamid was unable to be resolved from the query then a 0 is returned.
-func SearchForID(query, apikey string) int64 {
+func SearchForID(query, apikey string) SteamID64 {
 	query = strings.Replace(query, " ", "", -1)
 
 	if strings.Index(query, "steamcommunity.com/profiles/") != -1 {
@@ -269,16 +269,16 @@ func SearchForID(query, apikey string) int64 {
 
 		output, err := strconv.ParseInt(query[strings.Index(query, "steamcommunity.com/profiles/") + len("steamcommunity.com/profiles/"):], 10, 64)
 		if err != nil {
-			return 0
+			return SteamID64(0)
 		}
 
 		query = strings.Replace(query, "/", "", -1)
 
 		if len(strconv.FormatInt(output, 10)) != 17 {
-			return 0
+			return SteamID64(0)
 		}
 
-		return output
+		return SteamID64(output)
 	} else if strings.Index(query, "steamcommunity.com/id/") != -1 {
 		if string(query[len(query)-1]) == "/" {
 			query = query[0:len(query)-1]
@@ -291,13 +291,13 @@ func SearchForID(query, apikey string) int64 {
 			"vanityurl":	{query},
 		}.Encode())
 		if err != nil {
-			return 0
+			return SteamID64(0)
 		}
 		defer resp.Body.Close()
 
 		content, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return 0
+			return SteamID64(0)
 		}
 
 		var vanityUrlResponse struct{
@@ -308,42 +308,42 @@ func SearchForID(query, apikey string) int64 {
 		}
 
 		if err := json.Unmarshal(content, &vanityUrlResponse); err != nil {
-			return 0
+			return SteamID64(0)
 		}
 
 		if vanityUrlResponse.Response.Success != 1 {
-			return 0
+			return SteamID64(0)
 		}
 
 		if len(vanityUrlResponse.Response.Steamid) != 17 {
-			return 0
+			return SteamID64(0)
 		}
 
 		output, err := strconv.ParseInt(vanityUrlResponse.Response.Steamid, 10, 64)
 		if err != nil {
-			return 0
+			return SteamID64(0)
 		}
 
-		return output
+		return SteamID64(output)
 	} else if regexp.MustCompile(`^STEAM_0:(0|1):[0-9]{1}[0-9]{0,8}$`).Match([]byte(query)) {
-		steamid := SteamidTo64(query)
+		steam64 := SteamIDToSteamID64(SteamID(query))
 
-		if len(strconv.FormatInt(steamid, 10)) != 17 {
-			return 0
+		if len(strconv.FormatUint(uint64(steam64), 10)) != 17 {
+			return SteamID64(0)
 		}
 
-		return steamid
+		return SteamID64(steam64)
 	} else if regexp.MustCompile(`^\d+$`).Match([]byte(query)) && len(query) == 17 {
 		output, err := strconv.ParseInt(query, 10, 64)
 		if err != nil {
-			return 0
+			return SteamID64(0)
 		}
 
 		if len(strconv.FormatInt(output, 10)) != 17 {
-			return 0
+			return SteamID64(0)
 		}
 
-		return output
+		return SteamID64(output)
 	}
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?" + url.Values{
@@ -351,13 +351,13 @@ func SearchForID(query, apikey string) int64 {
 		"vanityurl":	{query},
 	}.Encode())
 	if err != nil {
-		return 0
+		return SteamID64(0)
 	}
 	defer resp.Body.Close()
 
 	content, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return 0
+		return SteamID64(0)
 	}
 
 	var vanityUrlResponse struct{
@@ -368,33 +368,33 @@ func SearchForID(query, apikey string) int64 {
 	}
 
 	if err := json.Unmarshal(content, &vanityUrlResponse); err != nil {
-		return 0
+		return SteamID64(0)
 	}
 
 	if vanityUrlResponse.Response.Success != 1 {
-		return 0
+		return SteamID64(0)
 	}
 
 	if len(vanityUrlResponse.Response.Steamid) != 17 {
-		return 0
+		return SteamID64(0)
 	}
 
 	output, err := strconv.ParseInt(vanityUrlResponse.Response.Steamid, 10, 64)
 	if err != nil {
-		return 0
+		return SteamID64(0)
 	}
 
-	return output
+	return SteamID64(output)
 }
 
 // GetPlayerAchievements returns a type PlayerAchievements containing all achievements achieved by a specified steamid.
 //
 // If an error occurs then an empty PlayerAchievements will be returned along with the error.
-func GetPlayerAchievements(steamid int64, appid int, apikey string) (PlayerAchievements, error) {
+func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerAchievements, error) {
 	var plyAchievements PlayerAchievements
 
 	resp, err := http.Get("https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1?" + url.Values{
-		"steamid":	{strconv.FormatInt(steamid, 10)},
+		"steamid":	{strconv.FormatUint(uint64(steam64), 10)},
 		"appid":	{strconv.FormatInt(int64(appid), 10)},
 		"key":		{apikey},
 	}.Encode())
