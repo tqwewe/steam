@@ -123,12 +123,14 @@ func Login(username, password string) (*Account, error) {
 	return &acc, nil
 }
 
-// Logout logs out of Steam for a specified Account.
+// Logout logs out of Steam for a specified Account clearning all existing cookies.
 func (acc *Account) Logout() {
 	sessionID, _ := acc.getSessionId()
 	acc.HttpClient.PostForm("https://steamcommunity.com/login/logout/", url.Values {
 		"sessionid":	{sessionID},
 	})
+	cookieJar, _ := cookiejar.New(nil)
+	acc.HttpClient.Jar = cookieJar
 }
 
 // IsLoggedIn returns a bool based on weather an Account is logged in or not.

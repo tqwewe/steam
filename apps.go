@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"io/ioutil"
 	"encoding/json"
+	"sync"
+	"time"
 )
 
 type AppNews []struct {
@@ -28,6 +30,12 @@ type GlobalAchievementPercentage []struct {
 type AppList []struct {
 	Appid	int
 	Name	string
+}
+
+type AppInfo struct {
+	Appid		int
+	Name		string
+	Playercount	int
 }
 
 // GetNewsForApp returns a type AppNews containing all the news for a specific AppID in order from most recent.
@@ -190,4 +198,47 @@ func GetNumberOfCurrentPlayers(appid int) (int, error) {
 	}
 
 	return numberOfCurrentPlayersResponse.Response.Player_count, nil
+}
+
+// GetNumberOfCurrentPlayersForAllApps returns the number of players for all existing apps on the Steam network.
+// This function may take minutes to complete as it requests ~28000 http requests.
+func GetNumberOfCurrentPlayersForAllApps() ([]AppInfo, error) {
+	appList, err := GetAppList()
+	if err != nil {
+		return []AppInfo{}, err
+	}
+
+	var que int
+	var queMax int = 800
+	var apps []AppInfo
+
+	var wg sync.WaitGroup
+	for _, a := range appList {
+		app := a
+		for que > queMax {
+			time.Sleep(time.Millisecond * 100)
+		}
+		que++
+		wg.Add(1)
+		go func() {
+			defer func() {
+				que--
+				wg.Done()
+			}()
+
+			currentPlayers, err := GetNumberOfCurrentPlayers(app.Appid)
+			if err != nil {
+				return []AppInfo{}, err
+			}
+
+			apps = append(apps, AppInfo{
+				Appid:		app.Appid,
+				Name:		app.Name,
+				Playercount:	currentPlayers,
+			})
+		}()
+	}
+
+	wg.Wait()
+	return apps, nil
 }
