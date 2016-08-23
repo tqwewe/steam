@@ -1,15 +1,15 @@
 package steam
 
 import (
-	"net/http"
-	"net/http/cookiejar"
-	"time"
-	"io/ioutil"
-	"net/url"
-	"strconv"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Login logs into steam using the specified username and password and returns a type Account.
@@ -21,9 +21,9 @@ func Login(username, password string) (*Account, error) {
 	cookieJar, _ := cookiejar.New(nil)
 	acc.HttpClient = &http.Client{Jar: cookieJar, Timeout: time.Duration(120 * time.Second)}
 
-	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values {
-		"donotcache": {strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
-		"username": {acc.Username},
+	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values{
+		"donotcache": {strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)},
+		"username":   {acc.Username},
 	})
 	if err != nil {
 		return &acc, err
@@ -36,11 +36,11 @@ func Login(username, password string) (*Account, error) {
 	}
 
 	var rsakeyResult struct {
-		Success bool
+		Success       bool
 		Publickey_mod string
 		Publickey_exp string
-		Timestamp string
-		Token_gid string
+		Timestamp     string
+		Token_gid     string
 	}
 	if err := json.Unmarshal(content, &rsakeyResult); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
@@ -58,12 +58,12 @@ func Login(username, password string) (*Account, error) {
 		return &acc, errors.New("unable to encrypt password")
 	}
 
-	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values {
-		"donotcache":	{strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
-		"username": 	{acc.Username},
-		"password": 	{encryptedPassword},
-		"rsatimestamp":	{rsakeyResult.Timestamp},
-		"captchagid":	{"-1"},
+	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values{
+		"donotcache":   {strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)},
+		"username":     {acc.Username},
+		"password":     {encryptedPassword},
+		"rsatimestamp": {rsakeyResult.Timestamp},
+		"captchagid":   {"-1"},
 		"captcha_text": {""},
 	})
 	if err != nil {
@@ -77,17 +77,17 @@ func Login(username, password string) (*Account, error) {
 	}
 
 	var loginResult struct {
-		Success bool
-		Requires_twofactor bool
-		Login_complete bool
-		Transfer_urls []string
+		Success             bool
+		Requires_twofactor  bool
+		Login_complete      bool
+		Transfer_urls       []string
 		Transfer_parameters struct {
-			SteamId string
-			Token string
-			Auth string
+			SteamId        string
+			Token          string
+			Auth           string
 			Remember_login bool
-			Token_secure string
-				    }
+			Token_secure   string
+		}
 		Message string
 	}
 	if err = json.Unmarshal(content, &loginResult); err != nil {
@@ -107,12 +107,12 @@ func Login(username, password string) (*Account, error) {
 	}
 
 	for _, transferUrl := range loginResult.Transfer_urls {
-		resp, err = acc.HttpClient.PostForm(transferUrl, url.Values {
-			"steamid":		{loginResult.Transfer_parameters.SteamId},
-			"token": 		{loginResult.Transfer_parameters.Token},
-			"auth": 		{loginResult.Transfer_parameters.Auth},
-			"token_secure":		{loginResult.Transfer_parameters.Token_secure},
-			"remember_login":	{"true"},
+		resp, err = acc.HttpClient.PostForm(transferUrl, url.Values{
+			"steamid":        {loginResult.Transfer_parameters.SteamId},
+			"token":          {loginResult.Transfer_parameters.Token},
+			"auth":           {loginResult.Transfer_parameters.Auth},
+			"token_secure":   {loginResult.Transfer_parameters.Token_secure},
+			"remember_login": {"true"},
 		})
 		if err != nil {
 			return &acc, err
@@ -126,8 +126,8 @@ func Login(username, password string) (*Account, error) {
 // Logout logs out of Steam for a specified Account clearning all existing cookies.
 func (acc *Account) Logout() {
 	sessionID, _ := acc.getSessionId()
-	acc.HttpClient.PostForm("https://steamcommunity.com/login/logout/", url.Values {
-		"sessionid":	{sessionID},
+	acc.HttpClient.PostForm("https://steamcommunity.com/login/logout/", url.Values{
+		"sessionid": {sessionID},
 	})
 	cookieJar, _ := cookiejar.New(nil)
 	acc.HttpClient.Jar = cookieJar
@@ -150,9 +150,9 @@ func (acc *Account) IsLoggedIn() bool {
 
 // Relogin logs into Steam again from a previous type Account updating the session.
 func (acc *Account) Relogin() error {
-	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values {
-		"donotcache": {strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
-		"username": {acc.Username},
+	resp, err := acc.HttpClient.PostForm("https://steamcommunity.com/login/getrsakey", url.Values{
+		"donotcache": {strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)},
+		"username":   {acc.Username},
 	})
 	if err != nil {
 		return err
@@ -165,11 +165,11 @@ func (acc *Account) Relogin() error {
 	}
 
 	var rsakeyResult struct {
-		Success bool
+		Success       bool
 		Publickey_mod string
 		Publickey_exp string
-		Timestamp string
-		Token_gid string
+		Timestamp     string
+		Token_gid     string
 	}
 	if err := json.Unmarshal(content, &rsakeyResult); err != nil {
 		return err
@@ -184,12 +184,12 @@ func (acc *Account) Relogin() error {
 		return errors.New("unable to encrypt password")
 	}
 
-	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values {
-		"donotcache":	{strconv.FormatInt(time.Now().UnixNano() / int64(time.Millisecond), 10)},
-		"username": 	{acc.Username},
-		"password": 	{encryptedPassword},
-		"rsatimestamp":	{rsakeyResult.Timestamp},
-		"captchagid":	{"-1"},
+	resp, err = acc.HttpClient.PostForm("https://steamcommunity.com/login/dologin", url.Values{
+		"donotcache":   {strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)},
+		"username":     {acc.Username},
+		"password":     {encryptedPassword},
+		"rsatimestamp": {rsakeyResult.Timestamp},
+		"captchagid":   {"-1"},
 		"captcha_text": {""},
 	})
 	if err != nil {
@@ -203,17 +203,17 @@ func (acc *Account) Relogin() error {
 	}
 
 	var loginResult struct {
-		Success bool
-		Requires_twofactor bool
-		Login_complete bool
-		Transfer_urls []string
+		Success             bool
+		Requires_twofactor  bool
+		Login_complete      bool
+		Transfer_urls       []string
 		Transfer_parameters struct {
-				SteamId string
-				Token string
-				Auth string
-				Remember_login bool
-				Token_secure string
-			}
+			SteamId        string
+			Token          string
+			Auth           string
+			Remember_login bool
+			Token_secure   string
+		}
 		Message string
 	}
 	if err = json.Unmarshal(content, &loginResult); err != nil {
@@ -233,12 +233,12 @@ func (acc *Account) Relogin() error {
 	}
 
 	for _, transferUrl := range loginResult.Transfer_urls {
-		resp, err = acc.HttpClient.PostForm(transferUrl, url.Values {
-			"steamid":		{loginResult.Transfer_parameters.SteamId},
-			"token": 		{loginResult.Transfer_parameters.Token},
-			"auth": 		{loginResult.Transfer_parameters.Auth},
-			"token_secure":		{loginResult.Transfer_parameters.Token_secure},
-			"remember_login":	{"true"},
+		resp, err = acc.HttpClient.PostForm(transferUrl, url.Values{
+			"steamid":        {loginResult.Transfer_parameters.SteamId},
+			"token":          {loginResult.Transfer_parameters.Token},
+			"auth":           {loginResult.Transfer_parameters.Auth},
+			"token_secure":   {loginResult.Transfer_parameters.Token_secure},
+			"remember_login": {"true"},
 		})
 		if err != nil {
 			return err

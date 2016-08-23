@@ -1,9 +1,9 @@
 package steam
 
 import (
-	"strings"
 	"math/big"
 	"strconv"
+	"strings"
 )
 
 // SteamIDToSteamID64 converts a given SteamID to a SteamID64.
@@ -53,7 +53,7 @@ func SteamID64ToSteamID32(steam64 SteamID64) SteamID32 {
 //
 // 0 is returned if the process was unsuccessful.
 func SteamID32ToSteamID64(steam32 SteamID32) SteamID64 {
-	steam64, err := strconv.ParseInt("765" + strconv.FormatInt(int64(steam32) + 61197960265728, 10), 10, 64)
+	steam64, err := strconv.ParseInt("765"+strconv.FormatInt(int64(steam32)+61197960265728, 10), 10, 64)
 	if err != nil {
 		return 0
 	}

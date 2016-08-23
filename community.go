@@ -1,21 +1,21 @@
 package steam
 
 import (
-	"net/url"
-	"strconv"
-	"io/ioutil"
 	"encoding/json"
-	"strings"
 	"errors"
-	"sync"
-	"net/http"
-	"regexp"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 type PlayerAchievements []struct {
-	Achieved	int
-	Apiname		string
+	Achieved int
+	Apiname  string
 }
 
 // Message sends a message to a specified SteamID64 using a logged in Account.
@@ -36,14 +36,13 @@ func (acc *Account) Message(recipient SteamID64, message string) error {
 	}
 
 	resp, err := acc.HttpClient.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
-		"steamid_dst":		{strconv.FormatUint(uint64(recipient), 10)},
-		"text":			{message},
-		"umqid":		{acc.Umqid},
-		"access_token":		{acc.AccessToken},
-		"type":			{"saytext"},
-		"jsonp":		{"1"},
-		"_":			{strconv.FormatInt(makeTimestamp(), 10)},
-
+		"steamid_dst":  {strconv.FormatUint(uint64(recipient), 10)},
+		"text":         {message},
+		"umqid":        {acc.Umqid},
+		"access_token": {acc.AccessToken},
+		"type":         {"saytext"},
+		"jsonp":        {"1"},
+		"_":            {strconv.FormatInt(makeTimestamp(), 10)},
 	})
 	if err != nil {
 		return err
@@ -57,7 +56,7 @@ func (acc *Account) Message(recipient SteamID64, message string) error {
 
 	var messageResponse struct {
 		Utc_timestamp int64
-		Error string
+		Error         string
 	}
 	if err := json.Unmarshal(content, &messageResponse); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
@@ -133,11 +132,11 @@ func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) erro
 	inviteeList += `]`
 
 	resp, err := acc.HttpClient.PostForm("http://steamcommunity.com/actions/GroupInvite", url.Values{
-		"json":		{"1"},
-		"type":		{"groupInvite"},
-		"group":	{strconv.FormatUint(uint64(groupID), 10)},
-		"sessionID":	{sessionID},
-		"invitee_list":	{inviteeList},
+		"json":         {"1"},
+		"type":         {"groupInvite"},
+		"group":        {strconv.FormatUint(uint64(groupID), 10)},
+		"sessionID":    {sessionID},
+		"invitee_list": {inviteeList},
 	})
 	if err != nil {
 		return err
@@ -153,10 +152,10 @@ func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) erro
 		errors.New("Failed to invite user(s) to group")
 	}
 
-	var groupInviteResponse struct{
+	var groupInviteResponse struct {
 		Duplicate bool
-		GroupId string
-		Results string
+		GroupId   string
+		Results   string
 	}
 
 	if err := json.Unmarshal(content, &groupInviteResponse); err != nil {
@@ -214,10 +213,10 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 	}
 
 	resp, err := acc.HttpClient.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001/?" + url.Values{
-		"jsonp":	{"1"},
-		"ui_mode":	{"web"},
-		"access_token":	{acc.AccessToken},
-		"_":		{strconv.FormatInt(makeTimestamp(), 10)},
+		"jsonp":        {"1"},
+		"ui_mode":      {"web"},
+		"access_token": {acc.AccessToken},
+		"_":            {strconv.FormatInt(makeTimestamp(), 10)},
 	}.Encode())
 	if err != nil {
 		return err
@@ -228,16 +227,16 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 	if err != nil {
 		return err
 	}
-	content = []byte(string(content)[strings.Index(string(content), `{`):len(string(content))-1])
+	content = []byte(string(content)[strings.Index(string(content), `{`) : len(string(content))-1])
 
-	var logonResponse struct{
-		Steamid		string
-		Error		string
-		Umqid		string
-		Timestamp	int64
-		Utc_timestamp	int64
-		Message		int
-		Push		int
+	var logonResponse struct {
+		Steamid       string
+		Error         string
+		Umqid         string
+		Timestamp     int64
+		Utc_timestamp int64
+		Message       int
+		Push          int
 	}
 	if err = json.Unmarshal(content, &logonResponse); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
@@ -259,15 +258,15 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 
 	for {
 		resp, err = acc.HttpClient.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Poll/v0001/?" + url.Values{
-			"jsonp":		{"1"},
-			"umqid":		{acc.Umqid},
-			"message":		{strconv.FormatInt(message, 10)},
-			"pollid":		{strconv.FormatInt(pollid, 10)},
-			"sectimeout":		{"25"},
-			"secidletime":		{"12"},
-			"use_accountids":	{"1"},
-			"access_token":		{acc.AccessToken},
-			"_":			{strconv.FormatInt(makeTimestamp(), 10)},
+			"jsonp":          {"1"},
+			"umqid":          {acc.Umqid},
+			"message":        {strconv.FormatInt(message, 10)},
+			"pollid":         {strconv.FormatInt(pollid, 10)},
+			"sectimeout":     {"25"},
+			"secidletime":    {"12"},
+			"use_accountids": {"1"},
+			"access_token":   {acc.AccessToken},
+			"_":              {strconv.FormatInt(makeTimestamp(), 10)},
 		}.Encode())
 		if err != nil {
 			return err
@@ -277,28 +276,28 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 		if err != nil {
 			return err
 		}
-		content = []byte(string(content)[strings.Index(string(content), `{`):len(string(content))-1])
+		content = []byte(string(content)[strings.Index(string(content), `{`) : len(string(content))-1])
 
 		resp.Body.Close()
 
-		var pollResponse struct{
-			Pollid int64
+		var pollResponse struct {
+			Pollid     int64
 			Sectimeout int64
-			Error string
-			Messages []struct{
-				Type string
-				Timestamp int64
-				Utc_timestamp int64
+			Error      string
+			Messages   []struct {
+				Type           string
+				Timestamp      int64
+				Utc_timestamp  int64
 				Accountid_from int64
-				Text string
-				Status_flags int
-				Persona_state int
-				Persona_name string
+				Text           string
+				Status_flags   int
+				Persona_state  int
+				Persona_name   string
 			}
-			Messagelast int
-			Timestamp int64
+			Messagelast   int
+			Timestamp     int64
 			Utc_timestamp int64
-			Messagebase int
+			Messagebase   int
 		}
 		if err = json.Unmarshal(content, &pollResponse); err != nil {
 			if err.Error() == "invalid character '<' looking for beginning of value" {
@@ -333,10 +332,10 @@ func SearchForID(query, apikey string) SteamID64 {
 
 	if strings.Index(query, "steamcommunity.com/profiles/") != -1 {
 		if string(query[len(query)-1]) == "/" {
-			query = query[0:len(query)-1]
+			query = query[0 : len(query)-1]
 		}
 
-		output, err := strconv.ParseInt(query[strings.Index(query, "steamcommunity.com/profiles/") + len("steamcommunity.com/profiles/"):], 10, 64)
+		output, err := strconv.ParseInt(query[strings.Index(query, "steamcommunity.com/profiles/")+len("steamcommunity.com/profiles/"):], 10, 64)
 		if err != nil {
 			return SteamID64(0)
 		}
@@ -350,14 +349,14 @@ func SearchForID(query, apikey string) SteamID64 {
 		return SteamID64(output)
 	} else if strings.Index(query, "steamcommunity.com/id/") != -1 {
 		if string(query[len(query)-1]) == "/" {
-			query = query[0:len(query)-1]
+			query = query[0 : len(query)-1]
 		}
 
-		query = query[strings.Index(query, "steamcommunity.com/id/") + len("steamcommunity.com/id/"):]
+		query = query[strings.Index(query, "steamcommunity.com/id/")+len("steamcommunity.com/id/"):]
 
 		resp, err := http.Get("http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?" + url.Values{
-			"key":		{apikey},
-			"vanityurl":	{query},
+			"key":       {apikey},
+			"vanityurl": {query},
 		}.Encode())
 		if err != nil {
 			return SteamID64(0)
@@ -369,11 +368,11 @@ func SearchForID(query, apikey string) SteamID64 {
 			return SteamID64(0)
 		}
 
-		var vanityUrlResponse struct{
-			Response struct{
+		var vanityUrlResponse struct {
+			Response struct {
 				Steamid string
 				Success int
-				 }
+			}
 		}
 
 		if err := json.Unmarshal(content, &vanityUrlResponse); err != nil {
@@ -416,8 +415,8 @@ func SearchForID(query, apikey string) SteamID64 {
 	}
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?" + url.Values{
-		"key":		{apikey},
-		"vanityurl":	{query},
+		"key":       {apikey},
+		"vanityurl": {query},
 	}.Encode())
 	if err != nil {
 		return SteamID64(0)
@@ -429,11 +428,11 @@ func SearchForID(query, apikey string) SteamID64 {
 		return SteamID64(0)
 	}
 
-	var vanityUrlResponse struct{
-		Response struct{
-				 Steamid string
-				 Success int
-			 }
+	var vanityUrlResponse struct {
+		Response struct {
+			Steamid string
+			Success int
+		}
 	}
 
 	if err := json.Unmarshal(content, &vanityUrlResponse); err != nil {
@@ -461,9 +460,9 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 	var plyAchievements PlayerAchievements
 
 	resp, err := http.Get("https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1?" + url.Values{
-		"steamid":	{strconv.FormatUint(uint64(steam64), 10)},
-		"appid":	{strconv.FormatInt(int64(appid), 10)},
-		"key":		{apikey},
+		"steamid": {strconv.FormatUint(uint64(steam64), 10)},
+		"appid":   {strconv.FormatInt(int64(appid), 10)},
+		"key":     {apikey},
 	}.Encode())
 	if err != nil {
 		return plyAchievements, err
@@ -476,15 +475,15 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 	}
 
 	var playerAchievementsResponse struct {
-		Playerstats struct{
-				    SteamID string
-				    GameName string
-				    Success bool
-				    Achievements []struct {
-					    Achieved int
-					    Apiname string
-				    }
-			    }
+		Playerstats struct {
+			SteamID      string
+			GameName     string
+			Success      bool
+			Achievements []struct {
+				Achieved int
+				Apiname  string
+			}
+		}
 	}
 
 	if err := json.Unmarshal(content, &playerAchievementsResponse); err != nil {

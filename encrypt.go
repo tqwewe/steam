@@ -1,10 +1,10 @@
 package steam
 
 import (
-	"crypto/rsa"
-	"math/big"
-	"encoding/base64"
 	"crypto/rand"
+	"crypto/rsa"
+	"encoding/base64"
+	"math/big"
 )
 
 // TODO Tidy up encryptPassword function
@@ -18,7 +18,7 @@ func encryptPassword(password, modulus, exponent string) string {
 	plain_text = []byte(password)
 
 	// Generate Private Key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 1024);
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {
 		return ""
 	}
@@ -33,7 +33,6 @@ func encryptPassword(password, modulus, exponent string) string {
 	if !success {
 		return ""
 	}
-
 
 	exp, success := new(big.Int).SetString(exponent, 16)
 	if !success {

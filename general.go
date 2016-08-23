@@ -1,30 +1,30 @@
 package steam
 
 import (
-	"net/url"
-	"io/ioutil"
-	"regexp"
 	"encoding/json"
-	"net/http"
-	"time"
-	"strings"
 	"errors"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+	"time"
 )
 
 type Account struct {
-	Username string
-	Password string
-	SteamID SteamID64
-	HttpClient *http.Client
-	Umqid string
+	Username    string
+	Password    string
+	SteamID     SteamID64
+	HttpClient  *http.Client
+	Umqid       string
 	AccessToken string
 }
 
-type SteamID		string	// STEAM_0:0:86173181
-type SteamID64		uint64	// 76561198132612090
-type SteamID32		uint32	// 172346362
-type SteamID3		string	// [U:1:172346362]
-type GroupID		uint64	// 103582791453729676
+type SteamID string   // STEAM_0:0:86173181
+type SteamID64 uint64 // 76561198132612090
+type SteamID32 uint32 // 172346362
+type SteamID3 string  // [U:1:172346362]
+type GroupID uint64   // 103582791453729676
 
 // getSessionId returns the Steam sessionid cookie.
 //
@@ -96,10 +96,10 @@ func (acc *Account) getUmqid() string {
 		return ""
 	}
 
-	resp, err := acc.HttpClient.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001", url.Values {
-		"jsonp":	[]string{"1"},
-		"ui_mode":	[]string{"web"},
-		"access_token":	[]string{accessToken},
+	resp, err := acc.HttpClient.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001", url.Values{
+		"jsonp":        []string{"1"},
+		"ui_mode":      []string{"web"},
+		"access_token": []string{accessToken},
 	})
 	if err != nil {
 		return ""
@@ -112,13 +112,13 @@ func (acc *Account) getUmqid() string {
 	}
 
 	var umqidResponse struct {
-		Error		string
-		Message		int
-		Push		int
-		Steamid		string
-		Timestamp	int64
-		Umqid		string
-		Utc_timestamp	int64
+		Error         string
+		Message       int
+		Push          int
+		Steamid       string
+		Timestamp     int64
+		Umqid         string
+		Utc_timestamp int64
 	}
 	if err := json.Unmarshal(content, &umqidResponse); err != nil {
 		return ""

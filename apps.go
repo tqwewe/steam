@@ -1,41 +1,41 @@
 package steam
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
-	"io/ioutil"
-	"encoding/json"
 	"sync"
 	"time"
 )
 
 type AppNews []struct {
-	Author		string
-	Contents	string
-	Date		int
-	Feedlabel	string
-	Feedname	string
-	Gid		string
-	Is_external_url	bool
-	Title		string
-	Url		string
+	Author          string
+	Contents        string
+	Date            int
+	Feedlabel       string
+	Feedname        string
+	Gid             string
+	Is_external_url bool
+	Title           string
+	Url             string
 }
 
 type GlobalAchievementPercentage []struct {
-	Name	string
-	Percent	float64
+	Name    string
+	Percent float64
 }
 
 type AppList []struct {
-	Appid	int
-	Name	string
+	Appid int
+	Name  string
 }
 
 type AppInfo struct {
-	Appid		int
-	Name		string
-	Playercount	int
+	Appid       int
+	Name        string
+	Playercount int
 }
 
 // GetNewsForApp returns a type AppNews containing all the news for a specific AppID in order from most recent.
@@ -47,9 +47,9 @@ func GetNewsForApp(appid, count, maxLength int) (AppNews, error) {
 	var news AppNews
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?" + url.Values{
-		"appid":	{strconv.FormatInt(int64(appid), 10)},
-		"count":	{strconv.FormatInt(int64(count), 10)},
-		"maxlength":	{strconv.FormatInt(int64(maxLength), 10)},
+		"appid":     {strconv.FormatInt(int64(appid), 10)},
+		"count":     {strconv.FormatInt(int64(count), 10)},
+		"maxlength": {strconv.FormatInt(int64(maxLength), 10)},
 	}.Encode())
 	if err != nil {
 		return news, err
@@ -62,20 +62,20 @@ func GetNewsForApp(appid, count, maxLength int) (AppNews, error) {
 	}
 
 	var newsForAppResponse struct {
-		Appnews struct{
-				Appid int
-				Newsitems []struct {
-					Author		string
-					Contents	string
-					Date		int
-					Feedlabel	string
-					Feedname	string
-					Gid		string
-					Is_external_url	bool
-					Title		string
-					Url		string
-				}
+		Appnews struct {
+			Appid     int
+			Newsitems []struct {
+				Author          string
+				Contents        string
+				Date            int
+				Feedlabel       string
+				Feedname        string
+				Gid             string
+				Is_external_url bool
+				Title           string
+				Url             string
 			}
+		}
 	}
 
 	if err := json.Unmarshal(content, &newsForAppResponse); err != nil {
@@ -95,7 +95,7 @@ func GetGlobalAchievementPercentagesForApp(appid int) (GlobalAchievementPercenta
 	var achievements GlobalAchievementPercentage
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v0002/?" + url.Values{
-		"gameid":	{strconv.FormatInt(int64(appid), 10)},
+		"gameid": {strconv.FormatInt(int64(appid), 10)},
 	}.Encode())
 	if err != nil {
 		return achievements, err
@@ -108,12 +108,12 @@ func GetGlobalAchievementPercentagesForApp(appid int) (GlobalAchievementPercenta
 	}
 
 	var globalAchievementPercentagesForAppResponse struct {
-		Achievementpercentages struct{
-					       Achievements []struct{
-						       Name string
-						       Percent float64
-					       }
-				       }
+		Achievementpercentages struct {
+			Achievements []struct {
+				Name    string
+				Percent float64
+			}
+		}
 	}
 
 	if err := json.Unmarshal(content, &globalAchievementPercentagesForAppResponse); err != nil {
@@ -143,14 +143,14 @@ func GetAppList() (AppList, error) {
 	}
 
 	var appListResponse struct {
-		Applist struct{
-				Apps struct{
-					     App []struct{
-						     Appid int
-						     Name string
-					     }
-				     }
+		Applist struct {
+			Apps struct {
+				App []struct {
+					Appid int
+					Name  string
+				}
 			}
+		}
 	}
 
 	if err := json.Unmarshal(content, &appListResponse); err != nil {
@@ -180,10 +180,10 @@ func GetNumberOfCurrentPlayers(appid int) (int, error) {
 	}
 
 	var numberOfCurrentPlayersResponse struct {
-		Response struct{
-				 Player_count int
-				 Result int
-			 }
+		Response struct {
+			Player_count int
+			Result       int
+		}
 	}
 
 	if err := json.Unmarshal(content, &numberOfCurrentPlayersResponse); err != nil {
@@ -232,9 +232,9 @@ func GetNumberOfCurrentPlayersForAllApps() ([]AppInfo, error) {
 			}
 
 			apps = append(apps, AppInfo{
-				Appid:		app.Appid,
-				Name:		app.Name,
-				Playercount:	currentPlayers,
+				Appid:       app.Appid,
+				Name:        app.Name,
+				Playercount: currentPlayers,
 			})
 		}()
 	}
