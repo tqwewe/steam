@@ -63,19 +63,19 @@ func GetNewsForApp(appid, count, maxLength int) (AppNews, error) {
 
 	var newsForAppResponse struct {
 		Appnews struct {
-			Appid     int
-			Newsitems []struct {
-				Author          string
-				Contents        string
-				Date            int
-				Feedlabel       string
-				Feedname        string
-				Gid             string
-				Is_external_url bool
-				Title           string
-				Url             string
+				Appid     int
+				Newsitems []struct {
+					Author          string
+					Contents        string
+					Date            int
+					Feedlabel       string
+					Feedname        string
+					Gid             string
+					Is_external_url bool
+					Title           string
+					Url             string
+				}
 			}
-		}
 	}
 
 	if err := json.Unmarshal(content, &newsForAppResponse); err != nil {
@@ -109,11 +109,11 @@ func GetGlobalAchievementPercentagesForApp(appid int) (GlobalAchievementPercenta
 
 	var globalAchievementPercentagesForAppResponse struct {
 		Achievementpercentages struct {
-			Achievements []struct {
-				Name    string
-				Percent float64
-			}
-		}
+					       Achievements []struct {
+						       Name    string
+						       Percent float64
+					       }
+				       }
 	}
 
 	if err := json.Unmarshal(content, &globalAchievementPercentagesForAppResponse); err != nil {
@@ -144,13 +144,13 @@ func GetAppList() (AppList, error) {
 
 	var appListResponse struct {
 		Applist struct {
-			Apps struct {
-				App []struct {
-					Appid int
-					Name  string
-				}
+				Apps struct {
+					     App []struct {
+						     Appid int
+						     Name  string
+					     }
+				     }
 			}
-		}
 	}
 
 	if err := json.Unmarshal(content, &appListResponse); err != nil {
@@ -181,9 +181,9 @@ func GetNumberOfCurrentPlayers(appid int) (int, error) {
 
 	var numberOfCurrentPlayersResponse struct {
 		Response struct {
-			Player_count int
-			Result       int
-		}
+				 Player_count int
+				 Result       int
+			 }
 	}
 
 	if err := json.Unmarshal(content, &numberOfCurrentPlayersResponse); err != nil {
@@ -228,7 +228,7 @@ func GetNumberOfCurrentPlayersForAllApps() ([]AppInfo, error) {
 
 			currentPlayers, err := GetNumberOfCurrentPlayers(app.Appid)
 			if err != nil {
-				return []AppInfo{}, err
+				return
 			}
 
 			apps = append(apps, AppInfo{
