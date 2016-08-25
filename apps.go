@@ -39,7 +39,6 @@ type AppInfo struct {
 }
 
 // GetNewsForApp returns a type AppNews containing all the news for a specific AppID in order from most recent.
-//
 // The count parameter specific how many news items to return.
 // The maxLength parameter is used to specify how many characters of each news item to show.
 // If 0 is used for maxLength then there will be no limit on how many characters to return.
@@ -164,7 +163,8 @@ func GetAppList() (AppList, error) {
 	return appList, nil
 }
 
-// GetNumberOfCurrentPlayers returns the number of players for a specified AppID.
+// GetNumberOfCurrentPlayers returns the number of players which are playing a
+// specified AppID open.
 func GetNumberOfCurrentPlayers(appid int) (int, error) {
 	resp, err := http.Get("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1?" + url.Values{
 		"appid": {strconv.FormatInt(int64(appid), 10)},

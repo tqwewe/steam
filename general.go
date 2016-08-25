@@ -32,7 +32,6 @@ type SteamID3 string  // [U:1:172346362]
 type GroupID uint64   // 103582791453729676
 
 // getSessionId returns the Steam sessionid cookie.
-//
 // If no sessionid cookie is found, an empty string will be returned.
 func (acc *Account) getSessionId() (string, error) {
 	resp, err := acc.HttpClient.Get("https://steamcommunity.com/")
@@ -55,7 +54,6 @@ func (acc *Account) getSessionId() (string, error) {
 }
 
 // getAccessToken returns the accesstoken of an Account.
-//
 // If no accesstoken is found then an empty string is returned.
 func (acc *Account) getAccessToken() string {
 	resp, err := acc.HttpClient.Get("https://steamcommunity.com/chat")
@@ -78,7 +76,6 @@ func (acc *Account) getAccessToken() string {
 }
 
 // getUmqid returns the umqid of an Account.
-//
 // If no accessToken is found then an empty string is returned.
 func (acc *Account) getUmqid() string {
 	accessToken := acc.getAccessToken()
@@ -116,14 +113,6 @@ func (acc *Account) getUmqid() string {
 
 	return umqidResponse.Umqid
 }
-
-// apiKeyCheck returns a bool indicating weather the Account has an APIKey set.
-/*func (acc *Account) apiKeyCheck() bool {
-	if acc.ApiKey != "" {
-		return true
-	}
-	return false
-}*/
 
 // makeTimestamp returns the current Unix timestamp.
 func makeTimestamp() int64 {
