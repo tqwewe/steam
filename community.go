@@ -13,6 +13,27 @@ import (
 	"sync"
 )
 
+type PlayerSummaries struct {
+	SteamID64      SteamID64
+	DisplayName    string
+	ProfileURL     string
+	AvatarSmallURL string
+	AvatarMedURL   string
+	AvatarFullURL  string
+	State          int // 0 - Offline, 1 - Online, 2 - Busy, 3 - Away, 4 - Snooze, 5 - looking to trade, 6 - looking to play
+	Public         bool
+	Configured     bool
+	LastLogOff     int64
+
+	RealName           string
+	PrimaryGroupID     GroupID
+	TimeCreated        int64
+	CurrentlyPlayingID int
+	CurrentlyPlaying   string
+	ServerIP           string
+	CountryCode        string
+}
+
 type PlayerAchievements []struct {
 	Achieved int
 	Apiname  string
@@ -498,4 +519,99 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 
 	plyAchievements = playerAchievementsResponse.Playerstats.Achievements
 	return plyAchievements, nil
+}
+
+func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries, error) {
+	var plySummaries []PlayerSummaries
+
+	var steamIDs string
+	for i, id := range steam64 {
+		steamIDs += `"` + strconv.FormatUint(uint64(id), 10) + `"`
+		if i < len(steam64)-1 {
+			steamIDs += ","
+		}
+	}
+
+	resp, err := http.Get("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?" + url.Values{
+		"steamids": {steamIDs},
+		"key":      {apiKey},
+	}.Encode())
+	if err != nil {
+		return plySummaries, err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return plySummaries, err
+	}
+
+	var playerSummariesResponse struct {
+		Response struct {
+			Players []struct {
+				Avatar                   string `json:"avatar"`
+				Avatarfull               string `json:"avatarfull"`
+				Avatarmedium             string `json:"avatarmedium"`
+				Communityvisibilitystate int    `json:"communityvisibilitystate"`
+				Gameextrainfo            string `json:"gameextrainfo"`
+				Gameid                   string `json:"gameid"`
+				Gameserverip		 string `json:"gameserverip"`
+				Lastlogoff               int    `json:"lastlogoff"`
+				Loccountrycode           string `json:"loccountrycode"`
+				Locstatecode             string `json:"locstatecode"`
+				Personaname              string `json:"personaname"`
+				Personastate             int    `json:"personastate"`
+				Personastateflags        int    `json:"personastateflags"`
+				Primaryclanid            string `json:"primaryclanid"`
+				Profilestate             int    `json:"profilestate"`
+				Profileurl               string `json:"profileurl"`
+				Realname                 string `json:"realname"`
+				Steamid                  string `json:"steamid"`
+				Timecreated              int    `json:"timecreated"`
+			} `json:"players"`
+		} `json:"response"`
+	}
+
+	if err := json.Unmarshal(content, &playerSummariesResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return plySummaries, jsonUnmarshallErrorCheck(content)
+		}
+		return plySummaries, err
+	}
+
+	for _, ply := range playerSummariesResponse.Response.Players {
+		id, _ := strconv.ParseUint(ply.Steamid, 10, 64)
+		var public bool
+		if ply.Communityvisibilitystate == 3 {
+			public = true
+		}
+		var configured bool
+		if ply.Profilestate == 1 {
+			configured = true
+		}
+		groupID, _ := strconv.ParseUint(ply.Primaryclanid, 10, 64)
+		gameID, _ := strconv.ParseInt(ply.Gameid, 10, 64)
+		plySummaries = append(plySummaries, PlayerSummaries{
+			SteamID64:        SteamID64(id),
+			DisplayName:    ply.Personaname,
+			ProfileURL:     ply.Profileurl,
+			AvatarSmallURL: ply.Avatar,
+			AvatarMedURL:   ply.Avatarmedium,
+			AvatarFullURL:  ply.Avatarfull,
+			State:          ply.Personastate,
+			Public:         public,
+			Configured:     configured,
+			LastLogOff:     int64(ply.Lastlogoff),
+
+			RealName:           ply.Realname,
+			PrimaryGroupID:     GroupID(groupID),
+			TimeCreated:        int64(ply.Timecreated),
+			CurrentlyPlayingID: int(gameID),
+			CurrentlyPlaying: ply.Gameextrainfo,
+			ServerIP: ply.Gameserverip,
+			CountryCode: ply.Loccountrycode,
+		})
+	}
+
+	return plySummaries, nil
 }
