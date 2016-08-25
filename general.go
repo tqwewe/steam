@@ -1,3 +1,6 @@
+// Steam provides functions to convert Steam ID's to any existing Steam ID
+// format, login and send messages to users, and a large number of Steam API
+// functions to collect information about Steam.
 package steam
 
 import (
@@ -11,6 +14,8 @@ import (
 	"time"
 )
 
+// Account is a struct containing information about a Steam account including
+// the login details and http client.
 type Account struct {
 	Username    string
 	Password    string
@@ -30,21 +35,6 @@ type GroupID uint64   // 103582791453729676
 //
 // If no sessionid cookie is found, an empty string will be returned.
 func (acc *Account) getSessionId() (string, error) {
-	/*steamUrl, err := url.Parse("http://steamcommunity.com")
-	if err != nil {
-		return "", err
-	}
-
-	cookies := acc.HttpClient.Jar.Cookies(steamUrl)
-	for _, cookie := range cookies {
-		fmt.Println(cookie.Name)
-		if cookie.Name == "sessionid" {
-			return cookie.Value, nil
-		}
-	}
-
-	return "", errors.New("Could not find sessionid cookie")*/
-
 	resp, err := acc.HttpClient.Get("https://steamcommunity.com/")
 	defer resp.Body.Close()
 	if err != nil {

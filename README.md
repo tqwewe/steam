@@ -1,4 +1,4 @@
-# Steam
+# Steam ![alt text](http://i.picresize.com/images/2016/08/23/ROrL1.png "Steam")
 
 Steam is a package individually created by Acidic9 for Golang. It provides a huge range of features and functions and was made to be used with ease.
 
@@ -23,7 +23,7 @@ import (
 
 ### Example Usage
 
-Convert a SteamID
+__Convert a SteamID__
 ```go
 package main
 
@@ -33,14 +33,14 @@ import (
 )
 
 func main() {
-	var steam64 steam.SteamID64 = 76561198132612090
+	steam64 := steam.SteamID64(76561198132612090)
 	fmt.Println("SteamID 64:", steam64)
 	fmt.Println("SteamID 32:", steam.SteamID64ToSteamID32(steam64))
 	fmt.Println("SteamID:   ", steam.SteamID64ToSteamID(steam64))
 }
 ```
 
-Send a message to someone on Steam
+__Send a message to someone on Steam__
 ```go
 package main
 
@@ -64,6 +64,8 @@ func main() {
 	}
 }
 ```
+
+---
 
 ### Official Godoc
 The official Godoc for this package is available at [https://godoc.org/github.com/Acidic9/steam](https://godoc.org/github.com/Acidic9/steam)

@@ -323,7 +323,6 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 	return nil
 }
 
-// TODO: Cleanup and fix SearchForID function
 // SearchForID tries to retrieve a SteamID64 using a query (search).
 //
 // If an error occurs or the SteamID was unable to be resolved from the query then a 0 is returned.
