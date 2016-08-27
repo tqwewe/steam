@@ -39,6 +39,11 @@ type PlayerAchievements []struct {
 	Apiname  string
 }
 
+type FriendsList []struct {
+	SteamID     SteamID64
+	FriendSince int64
+}
+
 // Message sends a message to a specified SteamID64 using a logged in Account.
 func (acc *Account) Message(recipient SteamID64, message string) error {
 	if len(acc.Umqid) <= 0 {
@@ -521,6 +526,8 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 	return plyAchievements, nil
 }
 
+// GetPlayerSummaries returns a slice of PlayerSummaries with the same length of how many valid SteamID64's were parsed
+// as arguments.
 func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries, error) {
 	var plySummaries []PlayerSummaries
 
@@ -555,7 +562,7 @@ func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries,
 				Communityvisibilitystate int    `json:"communityvisibilitystate"`
 				Gameextrainfo            string `json:"gameextrainfo"`
 				Gameid                   string `json:"gameid"`
-				Gameserverip		 string `json:"gameserverip"`
+				Gameserverip             string `json:"gameserverip"`
 				Lastlogoff               int    `json:"lastlogoff"`
 				Loccountrycode           string `json:"loccountrycode"`
 				Locstatecode             string `json:"locstatecode"`
@@ -592,7 +599,7 @@ func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries,
 		groupID, _ := strconv.ParseUint(ply.Primaryclanid, 10, 64)
 		gameID, _ := strconv.ParseInt(ply.Gameid, 10, 64)
 		plySummaries = append(plySummaries, PlayerSummaries{
-			SteamID64:        SteamID64(id),
+			SteamID64:      SteamID64(id),
 			DisplayName:    ply.Personaname,
 			ProfileURL:     ply.Profileurl,
 			AvatarSmallURL: ply.Avatar,
@@ -607,11 +614,63 @@ func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries,
 			PrimaryGroupID:     GroupID(groupID),
 			TimeCreated:        int64(ply.Timecreated),
 			CurrentlyPlayingID: int(gameID),
-			CurrentlyPlaying: ply.Gameextrainfo,
-			ServerIP: ply.Gameserverip,
-			CountryCode: ply.Loccountrycode,
+			CurrentlyPlaying:   ply.Gameextrainfo,
+			ServerIP:           ply.Gameserverip,
+			CountryCode:        ply.Loccountrycode,
 		})
 	}
 
 	return plySummaries, nil
+}
+
+// GetFriendsList returns a type FriendsList containing all friends for a specific SteamID64.
+func GetFriendsList(steam64 SteamID64, apiKey string) (FriendsList, error) {
+	var friends FriendsList
+
+	resp, err := http.Get("https://api.steampowered.com/ISteamUser/GetFriendList/v1/?" + url.Values{
+		"key":     {apiKey},
+		"steamid": {strconv.FormatUint(uint64(steam64), 10)},
+	}.Encode())
+	if err != nil {
+		return friends, err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return friends, err
+	}
+
+	var friendsListResponse struct {
+		Friendslist struct {
+			Friends []struct {
+				FriendSince  int    `json:"friend_since"`
+				Relationship string `json:"relationship"`
+				Steamid      string `json:"steamid"`
+			} `json:"friends"`
+		} `json:"friendslist"`
+	}
+
+	if err := json.Unmarshal(content, &friendsListResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return friends, jsonUnmarshallErrorCheck(content)
+		}
+		return friends, err
+	}
+
+	for _, friend := range friendsListResponse.Friendslist.Friends {
+		steamID, err := strconv.ParseUint(friend.Steamid, 10, 64)
+		if err != nil {
+			continue
+		}
+		friends = append(friends, struct {
+			SteamID SteamID64
+			FriendSince int64
+		}{
+			SteamID: SteamID64(steamID),
+			FriendSince: int64(friend.FriendSince),
+		})
+	}
+
+	return friends, nil
 }
