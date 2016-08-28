@@ -23,7 +23,7 @@ type Account struct {
 	HttpClient  *http.Client
 	Umqid       string
 	AccessToken string
-	ApiKey	    string
+	ApiKey      string
 }
 
 type SteamID string   // STEAM_0:0:86173181

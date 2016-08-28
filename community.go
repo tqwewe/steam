@@ -664,10 +664,10 @@ func GetFriendsList(steam64 SteamID64, apiKey string) (FriendsList, error) {
 			continue
 		}
 		friends = append(friends, struct {
-			SteamID SteamID64
+			SteamID     SteamID64
 			FriendSince int64
 		}{
-			SteamID: SteamID64(steamID),
+			SteamID:     SteamID64(steamID),
 			FriendSince: int64(friend.FriendSince),
 		})
 	}
