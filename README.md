@@ -28,15 +28,16 @@ __Convert a SteamID__
 package main
 
 import (
-	"github.com/Acidic9/steam"
 	"fmt"
+	"github.com/Acidic9/steam"
 )
 
 func main() {
 	steam64 := steam.SteamID64(76561198132612090)
+	fmt.Println("SteamID:   ", steam.SteamID64ToSteamID(steam64))
 	fmt.Println("SteamID 64:", steam64)
 	fmt.Println("SteamID 32:", steam.SteamID64ToSteamID32(steam64))
-	fmt.Println("SteamID:   ", steam.SteamID64ToSteamID(steam64))
+	fmt.Println("SteamID 3: ", steam.SteamID64ToSteamID3(steam64))
 }
 ```
 
