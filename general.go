@@ -6,6 +6,7 @@ package steam
 import (
 	"encoding/json"
 	"errors"
+	"html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -136,25 +137,28 @@ func stringBetween(str, start, end string) (string, error) {
 // jsonUnmarshallError is used to manage steam errors which are no json and return the message given.
 func jsonUnmarshallErrorCheck(content []byte) error {
 	var errorPage string
-	if h1Index := strings.Index(string(content), "<body>"); h1Index != -1 {
-		errorPage = string(content)[h1Index:]
+	if strings.Index(strings.ToLower(string(content)), "<body>") == -1 {
+		return errors.New(html.UnescapeString(string(content)))
 	}
+	errorPage = string(content)[len("<body>")+strings.Index(strings.ToLower(string(content)), "<body>"):]
+	if strings.Index(strings.ToLower(string(content)), "</body>") == -1 {
+		return errors.New(html.UnescapeString(string(content)))
+	}
+	errorPage = errorPage[:strings.Index(strings.ToLower(errorPage), "</body>")]
 
-	allParts := regexp.MustCompile(`<\/?\w+>`).FindAllString(errorPage, -1)
-	for _, part := range allParts {
-		switch part {
+	htmlTags := regexp.MustCompile(`<\/?\w+>`).FindAllString(errorPage, -1)
+	for _, tag := range htmlTags {
+		switch tag {
 		case "</h1>":
-			errorPage = strings.Replace(errorPage, part, ": ", -1)
-			continue
+			errorPage = strings.Replace(errorPage, tag, ": ", -1)
 		case "<pre>":
-			errorPage = strings.Replace(errorPage, part, "'", -1)
-			continue
+			errorPage = strings.Replace(errorPage, tag, "'", -1)
 		case "</pre>":
-			errorPage = strings.Replace(errorPage, part, "'", -1)
-			continue
+			errorPage = strings.Replace(errorPage, tag, "'", -1)
+		default:
+			errorPage = strings.Replace(errorPage, tag, "", -1)
 		}
-		errorPage = strings.Replace(errorPage, part, "", -1)
 	}
 
-	return errors.New(errorPage)
+	return errors.New(html.UnescapeString(strings.Replace(errorPage, "\n", " ", -1)))
 }

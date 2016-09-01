@@ -9,7 +9,7 @@ import (
 // GetGroupMembers uses a group url name (http://steamcommunity.com/groups/GOLANG) and returns a slice of
 // the group members.
 func GetGroupMembers(groupName string) ([]SteamID64, error) {
-	resp, err := http.Get("http://steamcommunity.com/groups/"+groupName+"/memberslistxml?json=1&xml=1")
+	resp, err := http.Get("http://steamcommunity.com/groups/" + groupName + "/memberslistxml?json=1&xml=1")
 	if err != nil {
 		return []SteamID64{}, err
 	}
