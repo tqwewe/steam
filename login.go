@@ -172,6 +172,9 @@ func (acc *Account) Relogin() error {
 		Token_gid     string
 	}
 	if err := json.Unmarshal(content, &rsakeyResult); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return jsonUnmarshallErrorCheck(content)
+		}
 		return err
 	}
 
@@ -180,7 +183,7 @@ func (acc *Account) Relogin() error {
 	}
 
 	encryptedPassword := encryptPassword(acc.Password, rsakeyResult.Publickey_mod, rsakeyResult.Publickey_exp)
-	if err != nil {
+	if encryptedPassword == "" {
 		return errors.New("unable to encrypt password")
 	}
 
