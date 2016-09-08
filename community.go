@@ -526,9 +526,9 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 	return plyAchievements, nil
 }
 
-// GetPlayerSummaries returns a slice of PlayerSummaries with the same length of how many valid SteamID64's were parsed
+// GetPlayersSummaries returns a slice of PlayerSummaries with the same length of how many valid SteamID64's were parsed
 // as arguments.
-func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries, error) {
+func GetPlayersSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries, error) {
 	var plySummaries []PlayerSummaries
 
 	var steamIDs string
@@ -618,6 +618,96 @@ func GetPlayerSummaries(apiKey string, steam64 ...SteamID64) ([]PlayerSummaries,
 			ServerIP:           ply.Gameserverip,
 			CountryCode:        ply.Loccountrycode,
 		})
+	}
+
+	return plySummaries, nil
+}
+
+// GetPlayerSummaries returns a PlayerSummaries.
+func GetPlayerSummaries(apiKey string, steam64 SteamID64) (PlayerSummaries, error) {
+	var plySummaries PlayerSummaries
+
+	resp, err := http.Get("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?" + url.Values{
+		"steamids": {strconv.FormatUint(uint64(steam64), 10)},
+		"key":      {apiKey},
+	}.Encode())
+	if err != nil {
+		return plySummaries, err
+	}
+	defer resp.Body.Close()
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return plySummaries, err
+	}
+
+	var playerSummariesResponse struct {
+		Response struct {
+			Players []struct {
+				Avatar                   string `json:"avatar"`
+				Avatarfull               string `json:"avatarfull"`
+				Avatarmedium             string `json:"avatarmedium"`
+				Communityvisibilitystate int    `json:"communityvisibilitystate"`
+				Gameextrainfo            string `json:"gameextrainfo"`
+				Gameid                   string `json:"gameid"`
+				Gameserverip             string `json:"gameserverip"`
+				Lastlogoff               int    `json:"lastlogoff"`
+				Loccountrycode           string `json:"loccountrycode"`
+				Locstatecode             string `json:"locstatecode"`
+				Personaname              string `json:"personaname"`
+				Personastate             int    `json:"personastate"`
+				Personastateflags        int    `json:"personastateflags"`
+				Primaryclanid            string `json:"primaryclanid"`
+				Profilestate             int    `json:"profilestate"`
+				Profileurl               string `json:"profileurl"`
+				Realname                 string `json:"realname"`
+				Steamid                  string `json:"steamid"`
+				Timecreated              int    `json:"timecreated"`
+			} `json:"players"`
+		} `json:"response"`
+	}
+
+	if err := json.Unmarshal(content, &playerSummariesResponse); err != nil {
+		if err.Error() == "invalid character '<' looking for beginning of value" {
+			return plySummaries, jsonUnmarshallErrorCheck(content)
+		}
+		return plySummaries, err
+	}
+
+	if len(playerSummariesResponse.Response.Players) > 0 {
+		id, _ := strconv.ParseUint(playerSummariesResponse.Response.Players[0].Steamid, 10, 64)
+		var public bool
+		if playerSummariesResponse.Response.Players[0].Communityvisibilitystate == 3 {
+			public = true
+		}
+		var configured bool
+		if playerSummariesResponse.Response.Players[0].Profilestate == 1 {
+			configured = true
+		}
+		groupID, _ := strconv.ParseUint(playerSummariesResponse.Response.Players[0].Primaryclanid, 10, 64)
+		gameID, _ := strconv.ParseInt(playerSummariesResponse.Response.Players[0].Gameid, 10, 64)
+		plySummaries = PlayerSummaries{
+			SteamID64:      SteamID64(id),
+			DisplayName:    playerSummariesResponse.Response.Players[0].Personaname,
+			ProfileURL:     playerSummariesResponse.Response.Players[0].Profileurl,
+			AvatarSmallURL: playerSummariesResponse.Response.Players[0].Avatar,
+			AvatarMedURL:   playerSummariesResponse.Response.Players[0].Avatarmedium,
+			AvatarFullURL:  playerSummariesResponse.Response.Players[0].Avatarfull,
+			State:          playerSummariesResponse.Response.Players[0].Personastate,
+			Public:         public,
+			Configured:     configured,
+			LastLogOff:     int64(playerSummariesResponse.Response.Players[0].Lastlogoff),
+
+			RealName:           playerSummariesResponse.Response.Players[0].Realname,
+			PrimaryGroupID:     GroupID(groupID),
+			TimeCreated:        int64(playerSummariesResponse.Response.Players[0].Timecreated),
+			CurrentlyPlayingID: int(gameID),
+			CurrentlyPlaying:   playerSummariesResponse.Response.Players[0].Gameextrainfo,
+			ServerIP:           playerSummariesResponse.Response.Players[0].Gameserverip,
+			CountryCode:        playerSummariesResponse.Response.Players[0].Loccountrycode,
+		}
+	} else {
+		return plySummaries, errors.New("No player summaries found")
 	}
 
 	return plySummaries, nil
