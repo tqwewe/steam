@@ -100,7 +100,7 @@ func (acc *Account) Message(recipient SteamID64, message string) error {
 
 // Broadcast sends a specified message to all SteamID's for Account.
 func (acc *Account) Broadcast(message string) error {
-	resp, err := acc.HttpClient.Get("http://steamcommunity.com/profiles/76561198193537875/friends/?xml=1")
+	resp, err := acc.HttpClient.Get("http://steamcommunity.com/profiles/" + strconv.FormatUint(uint64(acc.SteamID), 10) + "/friends")
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (acc *Account) Broadcast(message string) error {
 
 	friends := make([]SteamID64, 0, 32)
 
-	friendResponse := regexp.MustCompile(`<friend>(.*?)<\/friend>`).FindAllSubmatch(content, -1)
+	friendResponse := regexp.MustCompile(`name="friends\[(\d+)\]"`).FindAllSubmatch(content, -1)
 	for _, friendTag := range friendResponse {
 		if len(friendTag) >= 2 {
 			parsedFriend, err := strconv.ParseUint(string(friendTag[1]), 10, 64)
