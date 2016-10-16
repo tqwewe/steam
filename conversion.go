@@ -121,7 +121,17 @@ func SteamID32ToSteamID3(steam32 SteamID32) SteamID3 {
 func SteamID3ToSteamID(steam3 SteamID3) SteamID {
 	IDparts := strings.Split(string(steam3), ":")
 
-	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	id32 := IDparts[len(IDparts)-1]
+
+	if len(id32) <= 0 {
+		return SteamID("")
+	}
+
+	if id32[len(id32)-1:] == "]" {
+		id32 = id32[:len(id32)-1]
+	}
+
+	steam32, err := strconv.ParseUint(id32, 10, 64)
 	if err != nil {
 		return SteamID("")
 	}
@@ -136,7 +146,17 @@ func SteamID3ToSteamID(steam3 SteamID3) SteamID {
 func SteamID3ToSteamID64(steam3 SteamID3) SteamID64 {
 	IDparts := strings.Split(string(steam3), ":")
 
-	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	id32 := IDparts[len(IDparts)-1]
+
+	if len(id32) <= 0 {
+		return SteamID64(0)
+	}
+
+	if id32[len(id32)-1:] == "]" {
+		id32 = id32[:len(id32)-1]
+	}
+
+	steam32, err := strconv.ParseUint(id32, 10, 64)
 	if err != nil {
 		return SteamID64(0)
 	}
@@ -151,7 +171,17 @@ func SteamID3ToSteamID64(steam3 SteamID3) SteamID64 {
 func SteamID3ToSteamID32(steam3 SteamID3) SteamID32 {
 	IDparts := strings.Split(string(steam3), ":")
 
-	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	id32 := IDparts[len(IDparts)-1]
+
+	if len(id32) <= 0 {
+		return SteamID32(0)
+	}
+
+	if id32[len(id32)-1:] == "]" {
+		id32 = id32[:len(id32)-1]
+	}
+
+	steam32, err := strconv.ParseUint(id32, 10, 64)
 	if err != nil {
 		return SteamID32(0)
 	}
