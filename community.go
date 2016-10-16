@@ -437,7 +437,7 @@ func SearchForID(query, apikey string) SteamID64 {
 		}
 
 		return SteamID64(output)
-	} else if regexp.MustCompile(`U:1:\d+`).MatchString(strings.ToUpper(query)) {
+	} else if regexp.MustCompile(`(\[)?U:1:\d+(\])?`).MatchString(strings.ToUpper(query)) {
 		return SteamID3ToSteamID64(SteamID3(query))
 	}
 
