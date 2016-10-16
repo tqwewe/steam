@@ -113,3 +113,48 @@ func SteamID32ToSteamID3(steam32 SteamID32) SteamID3 {
 
 	return SteamIDToSteamID3(steamID)
 }
+
+// SteamID3ToSteamID converts a given SteamID3 to a SteamID.
+// eg. [U:1:172346362] -> STEAM_0:0:86173181
+//
+// An empty SteamID (string) is returned if the process was unsuccessful.
+func SteamID3ToSteamID(steam3 SteamID3) SteamID {
+	IDparts := strings.Split(string(steam3), ":")
+
+	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	if err != nil {
+		return SteamID("")
+	}
+
+	return SteamID32ToSteamID(SteamID32(steam32))
+}
+
+// SteamID3ToSteamID64 converts a given SteamID3 to a SteamID64.
+// eg. [U:1:172346362] -> 76561198132612090
+//
+// 0 is returned if the process was unsuccessful.
+func SteamID3ToSteamID64(steam3 SteamID3) SteamID64 {
+	IDparts := strings.Split(string(steam3), ":")
+
+	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	if err != nil {
+		return SteamID64(0)
+	}
+
+	return SteamID32ToSteamID64(SteamID32(steam32))
+}
+
+// SteamID3ToSteamID64 converts a given SteamID3 to a SteamID64.
+// eg. [U:1:172346362] -> 172346362
+//
+// 0 is returned if the process was unsuccessful.
+func SteamID3ToSteamID32(steam3 SteamID3) SteamID32 {
+	IDparts := strings.Split(string(steam3), ":")
+
+	steam32, err := strconv.ParseUint(IDparts[len(IDparts)-1], 10, 64)
+	if err != nil {
+		return SteamID32(0)
+	}
+
+	return SteamID32(steam32)
+}
