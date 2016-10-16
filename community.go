@@ -418,7 +418,7 @@ func SearchForID(query, apikey string) SteamID64 {
 		}
 
 		return SteamID64(output)
-	} else if regexp.MustCompile(`^STEAM_0:(0|1):[0-9]{1}[0-9]{0,8}$`).Match([]byte(query)) {
+	} else if regexp.MustCompile(`^STEAM_0:(0|1):[0-9]{1}[0-9]{0,8}$`).MatchString(query) {
 		steam64 := SteamIDToSteamID64(SteamID(query))
 
 		if len(strconv.FormatUint(uint64(steam64), 10)) != 17 {
@@ -426,7 +426,7 @@ func SearchForID(query, apikey string) SteamID64 {
 		}
 
 		return SteamID64(steam64)
-	} else if regexp.MustCompile(`^\d+$`).Match([]byte(query)) && len(query) == 17 {
+	} else if regexp.MustCompile(`^\d+$`).MatchString(query) && len(query) == 17 {
 		output, err := strconv.ParseInt(query, 10, 64)
 		if err != nil {
 			return SteamID64(0)
@@ -437,6 +437,8 @@ func SearchForID(query, apikey string) SteamID64 {
 		}
 
 		return SteamID64(output)
+	} else if regexp.MustCompile(`U:1:\d+`).MatchString(strings.ToUpper(query)) {
+		return SteamID3ToSteamID64(SteamID3(query))
 	}
 
 	resp, err := http.Get("http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?" + url.Values{
