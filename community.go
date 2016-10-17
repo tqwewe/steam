@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+// A PlayerSummaries stores all general profile information for a steam user.
 type PlayerSummaries struct {
 	SteamID64      SteamID64
 	DisplayName    string
@@ -34,11 +35,13 @@ type PlayerSummaries struct {
 	CountryCode        string
 }
 
+// PlayerAchievements holds a slice of achievements and stores weather the related player has achieved each achievement.
 type PlayerAchievements []struct {
-	Achieved int
-	Apiname  string
+	Achieved        bool
+	AchievementName string
 }
 
+// FriendsList stores a slice storing a specific user's friend's list.
 type FriendsList []struct {
 	SteamID     SteamID64
 	FriendSince int64
@@ -47,18 +50,20 @@ type FriendsList []struct {
 // Message sends a message to a specified SteamID64 using a logged in Account.
 func (acc *Account) Message(recipient SteamID64, message string) error {
 	if len(acc.Umqid) <= 0 {
-		if umqid := acc.getUmqid(); umqid == "" {
+		umqid := acc.getUmqid()
+		if umqid == "" {
 			return errors.New("unable to retrieve umqid")
-		} else {
-			acc.Umqid = umqid
 		}
+
+		acc.Umqid = umqid
 	}
 	if len(acc.AccessToken) <= 0 {
-		if accessToken := acc.getAccessToken(); accessToken == "" {
+		accessToken := acc.getAccessToken()
+		if accessToken == "" {
 			return errors.New("unable to retrieve umqid")
-		} else {
-			acc.AccessToken = accessToken
 		}
+
+		acc.AccessToken = accessToken
 	}
 
 	resp, err := acc.HttpClient.PostForm("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Message/v0001/", url.Values{
@@ -81,8 +86,7 @@ func (acc *Account) Message(recipient SteamID64, message string) error {
 	}
 
 	var messageResponse struct {
-		Utc_timestamp int64
-		Error         string
+		Error string
 	}
 	if err := json.Unmarshal(content, &messageResponse); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
@@ -175,7 +179,7 @@ func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) erro
 	}
 
 	if string(content) == "" || string(content) == "null" {
-		errors.New("Failed to invite user(s) to group")
+		return errors.New("Failed to invite user(s) to group")
 	}
 
 	var groupInviteResponse struct {
@@ -223,20 +227,22 @@ func ResolveGroupID(groupVanityURL string) (GroupID, error) {
 	return GroupID(0), errors.New("Unable to resolve groupid")
 }
 
-// TODO: Fix issue with user logging out
 // ListenAndServe stops execution and loops listening to messages from other Steam
 // users. When a message is received, the argument callback is called.
 func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)) error {
-	if umqid := acc.getUmqid(); umqid == "" {
+	umqid := acc.getUmqid()
+	if umqid == "" {
 		return errors.New("unable to retrieve umqid")
-	} else {
-		acc.Umqid = umqid
 	}
-	if accessToken := acc.getAccessToken(); accessToken == "" {
+
+	acc.Umqid = umqid
+
+	accessToken := acc.getAccessToken()
+	if accessToken == "" {
 		return errors.New("unable to retrieve accessToken")
-	} else {
-		acc.AccessToken = accessToken
 	}
+
+	acc.AccessToken = accessToken
 
 	resp, err := acc.HttpClient.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Logon/v0001/?" + url.Values{
 		"jsonp":        {"1"},
@@ -280,7 +286,7 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 		acc.SteamID = SteamID64(steamid)
 	}
 	var pollid int64 = 1
-	var message int64 = int64(logonResponse.Message)
+	message := int64(logonResponse.Message)
 
 	for {
 		resp, err = acc.HttpClient.Get("https://api.steampowered.com/ISteamWebUserPresenceOAuth/Poll/v0001/?" + url.Values{
@@ -346,7 +352,6 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 		pollid = pollResponse.Pollid + 1
 		message = int64(pollResponse.Messagelast)
 	}
-	return nil
 }
 
 // SearchForID tries to retrieve a SteamID64 using a query (search).
@@ -513,7 +518,7 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 		}
 	}
 
-	if err := json.Unmarshal(content, &playerAchievementsResponse); err != nil {
+	if err = json.Unmarshal(content, &playerAchievementsResponse); err != nil {
 		if err.Error() == "invalid character '<' looking for beginning of value" {
 			return plyAchievements, jsonUnmarshallErrorCheck(content)
 		}
@@ -524,7 +529,18 @@ func GetPlayerAchievements(steam64 SteamID64, appid int, apikey string) (PlayerA
 		return plyAchievements, err
 	}
 
-	plyAchievements = playerAchievementsResponse.Playerstats.Achievements
+	for _, achievement := range playerAchievementsResponse.Playerstats.Achievements {
+		var achievementDetails struct {
+			Achieved        bool
+			AchievementName string
+		}
+		if achievement.Achieved > 0 {
+			achievementDetails.Achieved = true
+		}
+		achievementDetails.AchievementName = achievement.Apiname
+		plyAchievements = append(plyAchievements, achievementDetails)
+	}
+
 	return plyAchievements, nil
 }
 
