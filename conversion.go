@@ -61,7 +61,11 @@ func SteamID64ToSteamID(steam64 SteamID64) SteamID {
 //
 // 0 is returned if the process was unsuccessful.
 func SteamID64ToSteamID32(steam64 SteamID64) SteamID32 {
-	steam32, err := strconv.ParseInt(strconv.FormatUint(uint64(steam64), 10)[3:], 10, 64)
+	steam64Str := strconv.FormatUint(uint64(steam64), 10)
+	if len(steam64Str) < 3 {
+		return 0
+	}
+	steam32, err := strconv.ParseInt(steam64Str[3:], 10, 64)
 	if err != nil {
 		return 0
 	}
