@@ -227,6 +227,38 @@ func ResolveGroupID(groupVanityURL string) (GroupID, error) {
 	return GroupID(0), errors.New("Unable to resolve groupid")
 }
 
+// StateToString converts a profile state (offline/online/looking to play, etc)
+// to the correct string. If a number that is not between 0 and 6 is parsed as
+// the argument, then an empty string is returned.
+func StateToString(state int) string {
+	var stateStr string
+
+	switch state {
+	case 0:
+		stateStr = "Offline"
+
+	case 1:
+		stateStr = "Online"
+
+	case 2:
+		stateStr = "Busy"
+
+	case 3:
+		stateStr = "Away"
+
+	case 4:
+		stateStr = "Snooze"
+
+	case 5:
+		stateStr = "Looking to Trade"
+
+	case 6:
+		stateStr = "Looking to Play"
+	}
+
+	return stateStr
+}
+
 // ListenAndServe stops execution and loops listening to messages from other Steam
 // users. When a message is received, the argument callback is called.
 func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)) error {
@@ -282,10 +314,13 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 	}
 
 	acc.Umqid = logonResponse.Umqid
-	if steamid, err := strconv.ParseInt(logonResponse.Steamid, 10, 64); err == nil {
+
+	steamid, err := strconv.ParseInt(logonResponse.Steamid, 10, 64)
+	if err == nil {
 		acc.SteamID = SteamID64(steamid)
 	}
 	var pollid int64 = 1
+	var secttimeout int64 = 20
 	message := int64(logonResponse.Message)
 
 	for {
@@ -294,8 +329,8 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 			"umqid":          {acc.Umqid},
 			"message":        {strconv.FormatInt(message, 10)},
 			"pollid":         {strconv.FormatInt(pollid, 10)},
-			"sectimeout":     {"25"},
-			"secidletime":    {"12"},
+			"sectimeout":     {strconv.FormatInt(secttimeout, 10)},
+			"secidletime":    {"0"},
 			"use_accountids": {"1"},
 			"access_token":   {acc.AccessToken},
 			"_":              {strconv.FormatInt(makeTimestamp(), 10)},
@@ -340,6 +375,20 @@ func (acc *Account) ListenAndServe(callback func(user SteamID64, message string)
 
 		if pollResponse.Error != "OK" && pollResponse.Error != "Timeout" {
 			return errors.New(pollResponse.Error)
+		}
+
+		if pollResponse.Error == "Timeout" {
+			if pollResponse.Sectimeout > 20 {
+				secttimeout = pollResponse.Sectimeout
+			}
+
+			if pollResponse.Sectimeout < 120 {
+				if secttimeout+5 < 120 {
+					secttimeout = secttimeout + 5
+				} else {
+					secttimeout = 120
+				}
+			}
 		}
 
 		for _, message := range pollResponse.Messages {
