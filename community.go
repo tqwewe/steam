@@ -145,6 +145,27 @@ func (acc *Account) Broadcast(message string) error {
 	return nil
 }
 
+// ChangeProfilePic changes the account's profile picture to a default app avatar.
+// For example:
+//     acc.ChangeProfilePic(252490, 0)
+func (acc *Account) ChangeProfilePic(appID uint64, selectedAvatar uint64) error {
+	sessionID, err := acc.getSessionId()
+	if err != nil {
+		return err
+	}
+
+	resp, err := acc.HttpClient.PostForm("http://steamcommunity.com/games/"+strconv.FormatUint(appID, 10)+"/selectAvatar", url.Values{
+		"selectedAvatar": {strconv.FormatUint(selectedAvatar, 10)},
+		"sessionid":      {sessionID},
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
 // InviteToGroup invites a set of SteamID64's to a Steam group.
 func (acc *Account) InviteToGroup(groupID GroupID, recipients ...SteamID64) error {
 	sessionID, err := acc.getSessionId()
