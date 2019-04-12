@@ -1,4 +1,10 @@
-# Steam ![alt text](http://i.picresize.com/images/2016/08/23/ROrL1.png "Steam")
+# This project is depricated - new project is available at:
+
+https://github.com/Acidic9/go-steam
+
+---
+
+# Steam
 
 Steam is a package individually created by Acidic9 for Golang. It provides a huge range of features and functions and was made to be used with ease.
 
